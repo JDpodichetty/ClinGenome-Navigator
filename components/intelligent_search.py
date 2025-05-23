@@ -8,7 +8,7 @@ import json
 def render_intelligent_search(data_processor, vector_search, llm_processor):
     """Render the intelligent search hub with LLM-powered RAG capabilities"""
     
-    st.header("🧠 Intelligent Search Hub")
+    st.header("Intelligent Search Hub")
     
     if data_processor is None or vector_search is None:
         st.warning("Dataset not loaded. Loading default clinical genomics data...")
@@ -16,8 +16,14 @@ def render_intelligent_search(data_processor, vector_search, llm_processor):
     
     df = data_processor.get_data()
     
-    # Main search interface
-    st.markdown("### 💬 Ask Questions About Your Clinical Data")
+    # Description of the tool
+    st.markdown("""
+    **ClinGenome Navigator** analyzes comprehensive clinical genomics data for kidney disease research with focus on chronic kidney disease (CKD) and genetic variants. 
+    This platform combines patient demographics, genetic markers (APOL1, NPHS1, NPHS2), and clinical metrics to identify research opportunities and patient populations. 
+    Use natural language queries to explore patterns, analyze cohorts, and extract insights from 1,500+ patient records for pharmaceutical research and clinical trial planning.
+    """)
+    
+    st.markdown("---")
     
     col1, col2 = st.columns([4, 1])
     
@@ -70,65 +76,43 @@ def render_intelligent_search(data_processor, vector_search, llm_processor):
                 if "error" not in llm_response:
                     st.markdown("---")
                     
-                    # Modern card-style layout for AI Analysis
-                    st.markdown("""
-                    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 1rem; border-radius: 10px; margin: 1rem 0;">
-                        <h3 style="color: white; margin: 0; display: flex; align-items: center;">
-                            🤖 AI Analysis Results
-                        </h3>
-                    </div>
-                    """, unsafe_allow_html=True)
+                    # Header for Analysis Results
+                    st.markdown("### Analysis Results")
                     
-                    # Summary Card
-                    st.markdown("""
-                    <div style="background: #f8f9fa; border-left: 4px solid #007bff; padding: 1rem; border-radius: 5px; margin: 1rem 0;">
-                    """, unsafe_allow_html=True)
-                    st.markdown("**📋 Executive Summary**")
-                    st.write(llm_response.get("summary", "No summary available"))
-                    st.markdown("</div>", unsafe_allow_html=True)
+                    # Summary section
+                    st.markdown("#### Executive Summary")
+                    st.info(llm_response.get("summary", "No summary available"))
                     
                     # Three column layout for key information
                     col1, col2, col3 = st.columns(3)
                     
                     with col1:
-                        st.markdown("""
-                        <div style="background: #e3f2fd; border-radius: 8px; padding: 1rem; height: 300px; overflow-y: auto;">
-                            <h4 style="color: #1976d2; margin-top: 0;">🔍 Key Insights</h4>
-                        </div>
-                        """, unsafe_allow_html=True)
+                        st.markdown("#### Key Insights")
                         insights = llm_response.get("key_insights", [])
                         for i, insight in enumerate(insights, 1):
                             st.markdown(f"**{i}.** {insight}")
                     
                     with col2:
-                        st.markdown("""
-                        <div style="background: #f3e5f5; border-radius: 8px; padding: 1rem; height: 300px; overflow-y: auto;">
-                            <h4 style="color: #7b1fa2; margin-top: 0;">🏥 Clinical Significance</h4>
-                        </div>
-                        """, unsafe_allow_html=True)
+                        st.markdown("#### Clinical Significance")
                         st.write(llm_response.get("clinical_significance", "No clinical significance noted"))
                         
-                        st.markdown("**👥 Patient Populations:**")
+                        st.markdown("**Patient Populations:**")
                         st.write(llm_response.get("patient_populations", "No specific populations identified"))
                     
                     with col3:
-                        st.markdown("""
-                        <div style="background: #fff3e0; border-radius: 8px; padding: 1rem; height: 300px; overflow-y: auto;">
-                            <h4 style="color: #ef6c00; margin-top: 0;">🎯 Suggested Action (Caution: AI Generated)</h4>
-                        </div>
-                        """, unsafe_allow_html=True)
+                        st.markdown("#### Suggested Action (Caution: AI Generated)")
                         actions = llm_response.get("recommended_actions", [])
                         for action in actions:
                             st.markdown(f"• {action}")
                         
-                        st.markdown("**📊 Data References:**")
+                        st.markdown("**Data References:**")
                         references = llm_response.get("data_references", [])
                         for ref in references:
                             st.markdown(f"• {ref}")
                     
                     # Find relevant patients based on query
                     st.markdown("---")
-                    st.markdown("### 🔍 Relevant Patients Found")
+                    st.markdown("### Relevant Patients Found")
                     
                     # Perform vector search to find relevant patients
                     indices, scores = vector_search.search(query, top_k=10, similarity_threshold=0.1)
@@ -187,24 +171,7 @@ def render_intelligent_search(data_processor, vector_search, llm_processor):
                 st.error(f"Error processing query: {str(e)}")
     
 
-    
-    # Smart Query Suggestions
-    if not query.strip():
-        st.markdown("---")
-        st.markdown("### 💡 AI-Generated Smart Queries")
-        
-        # Generate intelligent suggestions
-        suggestions = llm_processor.generate_smart_query_suggestions(df)
-        
-        if suggestions:
-            cols = st.columns(2)
-            for i, suggestion in enumerate(suggestions[:8]):
-                col = cols[i % 2]
-                with col:
-                    if st.button(f"💭 {suggestion[:60]}...", key=f"smart_suggestion_{i}", help=suggestion):
-                        query = suggestion
-                        search_clicked = True
-                        st.rerun()
+
 
 def _create_dataset_context(df: pd.DataFrame) -> str:
     """Create context summary of the dataset for LLM processing"""
