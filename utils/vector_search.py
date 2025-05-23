@@ -103,19 +103,28 @@ class VectorSearch:
         return texts
     
     def search(self, query: str, top_k: int = 10, similarity_threshold: float = 0.0) -> Tuple[List[int], List[float]]:
-        """Perform semantic search using text similarity"""
-        if not self.texts:
+        """Perform semantic search using text similarity with numerical filtering"""
+        if not self.texts or self.df is None:
             raise ValueError("Search index not built. Please build index first.")
         
         try:
-            # Normalize query
+            # Extract numerical filters from query
+            filtered_indices = self._apply_numerical_filters(query)
+            
+            # If we have numerical filters, use only those indices
+            if filtered_indices is not None:
+                search_indices = filtered_indices
+            else:
+                search_indices = list(range(len(self.texts)))
+            
+            # Calculate similarity scores for filtered indices
+            scores = []
             query_lower = query.lower()
             
-            # Calculate similarity scores
-            scores = []
-            for i, text in enumerate(self.texts):
-                score = self._calculate_similarity(query_lower, text.lower())
-                scores.append((i, score))
+            for i in search_indices:
+                if i < len(self.texts):
+                    score = self._calculate_similarity(query_lower, self.texts[i].lower())
+                    scores.append((i, score))
             
             # Sort by score
             scores.sort(key=lambda x: x[1], reverse=True)
@@ -159,6 +168,118 @@ class VectorSearch:
             score = score / len(query_words)
         
         return min(score, 1.0)  # Cap at 1.0
+    
+    def _apply_numerical_filters(self, query: str) -> Optional[List[int]]:
+        """Apply numerical filters based on query text"""
+        if self.df is None:
+            return None
+        
+        query_lower = query.lower()
+        filtered_df = self.df.copy()
+        has_filters = False
+        
+        # Age filters
+        if 'age' in query_lower:
+            # Pattern for "above age X", "over X years", "age > X", etc.
+            age_patterns = [
+                r'above.*?age.*?(\d+)',
+                r'over.*?(\d+).*?years?',
+                r'age.*?(?:>|above|over).*?(\d+)',
+                r'(?:>|above|over).*?age.*?(\d+)',
+                r'age.*?(\d+).*?(?:and|or).*?(?:above|over|older)',
+                r'patients.*?(?:above|over).*?(\d+)'
+            ]
+            
+            for pattern in age_patterns:
+                matches = re.findall(pattern, query_lower)
+                if matches:
+                    min_age = int(matches[0])
+                    if 'Age' in filtered_df.columns:
+                        filtered_df = filtered_df[filtered_df['Age'] > min_age]
+                        has_filters = True
+                    break
+            
+            # Pattern for "below age X", "under X years", "age < X", etc.
+            age_patterns_max = [
+                r'below.*?age.*?(\d+)',
+                r'under.*?(\d+).*?years?',
+                r'age.*?(?:<|below|under).*?(\d+)',
+                r'(?:<|below|under).*?age.*?(\d+)',
+                r'younger.*?than.*?(\d+)'
+            ]
+            
+            for pattern in age_patterns_max:
+                matches = re.findall(pattern, query_lower)
+                if matches:
+                    max_age = int(matches[0])
+                    if 'Age' in filtered_df.columns:
+                        filtered_df = filtered_df[filtered_df['Age'] < max_age]
+                        has_filters = True
+                    break
+        
+        # eGFR filters
+        if 'egfr' in query_lower:
+            # Pattern for eGFR thresholds
+            egfr_patterns = [
+                r'egfr.*?(?:<|below|under).*?(\d+)',
+                r'egfr.*?(?:>|above|over).*?(\d+)',
+                r'(?:<|below|under).*?(\d+).*?egfr',
+                r'(?:>|above|over).*?(\d+).*?egfr'
+            ]
+            
+            for pattern in egfr_patterns:
+                matches = re.findall(pattern, query_lower)
+                if matches:
+                    threshold = int(matches[0])
+                    if 'eGFR' in filtered_df.columns:
+                        if any(word in pattern for word in ['<', 'below', 'under']):
+                            filtered_df = filtered_df[filtered_df['eGFR'] < threshold]
+                        else:
+                            filtered_df = filtered_df[filtered_df['eGFR'] > threshold]
+                        has_filters = True
+                    break
+        
+        # Sex filters
+        if any(word in query_lower for word in ['male', 'female', 'men', 'women']):
+            if 'Sex' in filtered_df.columns:
+                if any(word in query_lower for word in ['male', 'men']):
+                    filtered_df = filtered_df[filtered_df['Sex'] == 'M']
+                    has_filters = True
+                elif any(word in query_lower for word in ['female', 'women']):
+                    filtered_df = filtered_df[filtered_df['Sex'] == 'F']
+                    has_filters = True
+        
+        # Ethnicity filters
+        ethnicity_terms = {
+            'african american': 'African American',
+            'black': 'African American',
+            'caucasian': 'Caucasian',
+            'white': 'Caucasian',
+            'hispanic': 'Hispanic',
+            'latino': 'Hispanic',
+            'asian': 'Asian'
+        }
+        
+        for term, ethnicity in ethnicity_terms.items():
+            if term in query_lower and 'Ethnicity' in filtered_df.columns:
+                filtered_df = filtered_df[filtered_df['Ethnicity'] == ethnicity]
+                has_filters = True
+                break
+        
+        # Trial eligibility filters
+        if 'eligible' in query_lower or 'trial' in query_lower:
+            if 'Eligible_For_Trial' in filtered_df.columns:
+                if 'not eligible' in query_lower or 'ineligible' in query_lower:
+                    filtered_df = filtered_df[filtered_df['Eligible_For_Trial'] == 'No']
+                    has_filters = True
+                elif 'eligible' in query_lower:
+                    filtered_df = filtered_df[filtered_df['Eligible_For_Trial'] == 'Yes']
+                    has_filters = True
+        
+        if has_filters and len(filtered_df) > 0:
+            return filtered_df.index.tolist()
+        
+        return None
     
     def get_similar_patients(self, patient_idx: int, top_k: int = 5) -> Tuple[List[int], List[float]]:
         """Find similar patients to a given patient"""
