@@ -91,7 +91,7 @@ def render_intelligent_search(data_processor, vector_search, llm_processor):
                         st.markdown("#### 👥 Patient Populations")
                         st.markdown(llm_response.get("patient_populations", "No specific populations identified"))
                         
-                        st.markdown("#### 📝 Recommended Actions")
+                        st.markdown("#### 🎯 Suggested Action (Caution: AI Generated)")
                         actions = llm_response.get("recommended_actions", [])
                         for action in actions:
                             st.markdown(f"• {action}")
@@ -151,33 +151,7 @@ def render_intelligent_search(data_processor, vector_search, llm_processor):
                                 for rec in recs:
                                     st.markdown(f"• {rec}")
                         
-                        # Export functionality
-                        col1, col2, col3 = st.columns([1, 1, 2])
-                        
-                        with col1:
-                            if st.button("📥 Export Results"):
-                                csv_data = data_processor.export_results(relevant_df, 'csv')
-                                st.download_button(
-                                    label="Download CSV",
-                                    data=csv_data,
-                                    file_name=f"ai_search_results_{len(relevant_df)}_patients.csv",
-                                    mime="text/csv"
-                                )
-                        
-                        with col2:
-                            if st.button("📊 Export Analysis"):
-                                analysis_text = f"Query: {query}\n\n"
-                                analysis_text += f"Summary: {llm_response.get('summary', '')}\n\n"
-                                analysis_text += "Key Insights:\n"
-                                for insight in llm_response.get('key_insights', []):
-                                    analysis_text += f"- {insight}\n"
-                                
-                                st.download_button(
-                                    label="Download Analysis",
-                                    data=analysis_text,
-                                    file_name=f"ai_analysis_{len(relevant_df)}_patients.txt",
-                                    mime="text/plain"
-                                )
+
                     else:
                         st.warning("No specific patients found matching your query, but the analysis above provides insights about the overall dataset.")
                 

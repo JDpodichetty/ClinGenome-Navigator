@@ -18,7 +18,7 @@ st.set_page_config(
     page_title="ClinGenome Navigator",
     page_icon="🧬",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="collapsed"
 )
 
 # Initialize session state
@@ -54,12 +54,13 @@ def load_default_data():
     return False
 
 def main():
-    # Header
-    st.title("🧬 ClinGenome Navigator")
-    st.markdown("**Advanced Clinical Genomics Research Platform**")
-    
-    # Sidebar navigation
-    st.sidebar.title("Navigation")
+    # Static header ribbon
+    st.markdown("""
+    <div style="background: linear-gradient(90deg, #1f77b4 0%, #2e8b57 100%); padding: 1rem; margin: -1rem -1rem 2rem -1rem; border-radius: 0;">
+        <h1 style="color: white; margin: 0; font-size: 2.5rem; font-weight: bold;">🧬 ClinGenome Navigator</h1>
+        <p style="color: #e6f3ff; margin: 0.5rem 0 0 0; font-size: 1.2rem;">GenAI based Clinico Genomics Research Platform</p>
+    </div>
+    """, unsafe_allow_html=True)
     
     # Auto-load data if available
     if not st.session_state.data_loaded:
@@ -68,38 +69,18 @@ def main():
                 st.success("Dataset loaded successfully!")
                 st.rerun()
     
-    # Navigation options
-    if st.session_state.data_loaded:
-        page = st.sidebar.selectbox(
-            "Select a view:",
-            ["Intelligent Search Hub", "Dashboard", "Data Overview", "Advanced Analytics"]
-        )
-    else:
-        page = "Intelligent Search Hub"
-    
     # Main content area
     if not st.session_state.data_loaded:
-        # Welcome screen with integrated search
-        render_intelligent_search(None, None, st.session_state.llm_processor)
-        
-        st.markdown("---")
+        # Welcome screen
         st.markdown("""
-        ## Welcome to ClinGenome Navigator
+        ### 🚀 Welcome to Your Clinical Research Platform
         
-        **AI-Powered Clinical Genomics Research Platform**
+        **Loading your comprehensive clinical genomics dataset...**
         
-        ### 🧠 Enhanced Features:
-        - **Intelligent Search**: Ask questions in natural language and get AI-powered insights
-        - **Clinical Analysis**: Extract patterns from clinical notes using advanced LLM processing
-        - **RAG Search**: Retrieval-augmented generation for precise clinical research queries
-        - **Smart Insights**: Automated identification of research opportunities and patient cohorts
-        
-        ### 📊 Dataset Overview:
-        Your clinical genomics dataset includes:
-        - **1,500 patient records** with comprehensive clinical and genetic data
+        **Your dataset includes:**
+        - **1,500 patient records** with clinical and genetic data
         - **Genetic variants**: APOL1, NPHS1, NPHS2, WT1, UMOD, COL4A3 analysis
         - **Clinical metrics**: eGFR, Creatinine, diagnosis, and medication tracking
-        - **Trial eligibility**: Patient suitability assessment for clinical studies
         - **Clinical notes**: Rich text data for AI-powered insights extraction
         """)
         
@@ -107,14 +88,13 @@ def main():
             st.rerun()
     
     else:
-        # Render selected page
-        if page == "Intelligent Search Hub":
+        # Tab interface
+        tab1, tab2 = st.tabs(["🧠 Intelligent Search Hub", "📊 Data Exploration"])
+        
+        with tab1:
             render_intelligent_search(st.session_state.data_processor, st.session_state.vector_search, st.session_state.llm_processor)
-        elif page == "Dashboard":
-            render_dashboard(st.session_state.data_processor, st.session_state.vector_search)
-        elif page == "Data Overview":
-            render_data_overview(st.session_state.data_processor)
-        elif page == "Advanced Analytics":
+        
+        with tab2:
             render_visualization(st.session_state.data_processor)
 
 if __name__ == "__main__":
