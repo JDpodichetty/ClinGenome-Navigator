@@ -9,7 +9,6 @@ def render_intelligent_search(data_processor, vector_search, llm_processor):
     """Render the intelligent search hub with LLM-powered RAG capabilities"""
     
     st.header("🧠 Intelligent Search Hub")
-    st.markdown("**AI-Powered Clinical Genomics Research Assistant**")
     
     if data_processor is None or vector_search is None:
         st.warning("Dataset not loaded. Loading default clinical genomics data...")
@@ -70,33 +69,59 @@ def render_intelligent_search(data_processor, vector_search, llm_processor):
                 
                 if "error" not in llm_response:
                     st.markdown("---")
-                    st.markdown("### 🎯 AI Analysis Results")
                     
-                    # Display LLM response
-                    col1, col2 = st.columns([2, 1])
+                    # Modern card-style layout for AI Analysis
+                    st.markdown("""
+                    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 1rem; border-radius: 10px; margin: 1rem 0;">
+                        <h3 style="color: white; margin: 0; display: flex; align-items: center;">
+                            🤖 AI Analysis Results
+                        </h3>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    # Summary Card
+                    st.markdown("""
+                    <div style="background: #f8f9fa; border-left: 4px solid #007bff; padding: 1rem; border-radius: 5px; margin: 1rem 0;">
+                    """, unsafe_allow_html=True)
+                    st.markdown("**📋 Executive Summary**")
+                    st.write(llm_response.get("summary", "No summary available"))
+                    st.markdown("</div>", unsafe_allow_html=True)
+                    
+                    # Three column layout for key information
+                    col1, col2, col3 = st.columns(3)
                     
                     with col1:
-                        st.markdown("#### 📋 Summary")
-                        st.info(llm_response.get("summary", "No summary available"))
-                        
-                        st.markdown("#### 🔍 Key Insights")
+                        st.markdown("""
+                        <div style="background: #e3f2fd; border-radius: 8px; padding: 1rem; height: 300px; overflow-y: auto;">
+                            <h4 style="color: #1976d2; margin-top: 0;">🔍 Key Insights</h4>
+                        </div>
+                        """, unsafe_allow_html=True)
                         insights = llm_response.get("key_insights", [])
                         for i, insight in enumerate(insights, 1):
                             st.markdown(f"**{i}.** {insight}")
-                        
-                        st.markdown("#### 🏥 Clinical Significance")
-                        st.markdown(llm_response.get("clinical_significance", "No clinical significance noted"))
                     
                     with col2:
-                        st.markdown("#### 👥 Patient Populations")
-                        st.markdown(llm_response.get("patient_populations", "No specific populations identified"))
+                        st.markdown("""
+                        <div style="background: #f3e5f5; border-radius: 8px; padding: 1rem; height: 300px; overflow-y: auto;">
+                            <h4 style="color: #7b1fa2; margin-top: 0;">🏥 Clinical Significance</h4>
+                        </div>
+                        """, unsafe_allow_html=True)
+                        st.write(llm_response.get("clinical_significance", "No clinical significance noted"))
                         
-                        st.markdown("#### 🎯 Suggested Action (Caution: AI Generated)")
+                        st.markdown("**👥 Patient Populations:**")
+                        st.write(llm_response.get("patient_populations", "No specific populations identified"))
+                    
+                    with col3:
+                        st.markdown("""
+                        <div style="background: #fff3e0; border-radius: 8px; padding: 1rem; height: 300px; overflow-y: auto;">
+                            <h4 style="color: #ef6c00; margin-top: 0;">🎯 Suggested Action (Caution: AI Generated)</h4>
+                        </div>
+                        """, unsafe_allow_html=True)
                         actions = llm_response.get("recommended_actions", [])
                         for action in actions:
                             st.markdown(f"• {action}")
                         
-                        st.markdown("#### 📊 Data References")
+                        st.markdown("**📊 Data References:**")
                         references = llm_response.get("data_references", [])
                         for ref in references:
                             st.markdown(f"• {ref}")
@@ -161,71 +186,7 @@ def render_intelligent_search(data_processor, vector_search, llm_processor):
             except Exception as e:
                 st.error(f"Error processing query: {str(e)}")
     
-    # Clinical Insights Extraction Section
-    st.markdown("---")
-    st.markdown("### 📝 Clinical Notes Analysis")
-    
-    col1, col2 = st.columns([3, 1])
-    
-    with col1:
-        st.markdown("Extract insights from clinical notes using advanced AI analysis")
-    
-    with col2:
-        if st.button("🔬 Analyze Clinical Notes", use_container_width=True):
-            with st.spinner("🧠 Extracting insights from clinical notes..."):
-                try:
-                    # Get clinical notes
-                    if 'Clinical_Notes' in df.columns:
-                        clinical_notes = df['Clinical_Notes'].dropna().tolist()
-                        
-                        if clinical_notes:
-                            # Extract insights using LLM
-                            insights = llm_processor.extract_clinical_insights(clinical_notes)
-                            
-                            if "error" not in insights:
-                                st.markdown("#### 🔬 Clinical Insights Extracted")
-                                
-                                col1, col2 = st.columns(2)
-                                
-                                with col1:
-                                    st.markdown("**Overall Summary:**")
-                                    st.info(insights.get("overall_summary", "No summary available"))
-                                    
-                                    st.markdown("**Disease Patterns:**")
-                                    patterns = insights.get("disease_patterns", [])
-                                    for pattern in patterns:
-                                        st.markdown(f"• {pattern}")
-                                    
-                                    st.markdown("**Treatment Insights:**")
-                                    treatments = insights.get("treatment_insights", [])
-                                    for treatment in treatments:
-                                        st.markdown(f"• {treatment}")
-                                
-                                with col2:
-                                    st.markdown("**Risk Factors:**")
-                                    risks = insights.get("risk_factors", [])
-                                    for risk in risks:
-                                        st.markdown(f"• {risk}")
-                                    
-                                    st.markdown("**Research Opportunities:**")
-                                    opportunities = insights.get("research_opportunities", [])
-                                    for opp in opportunities:
-                                        st.markdown(f"• {opp}")
-                                    
-                                    urgent = insights.get("urgent_findings", [])
-                                    if urgent:
-                                        st.markdown("**⚠️ Urgent Findings:**")
-                                        for finding in urgent:
-                                            st.error(f"• {finding}")
-                            else:
-                                st.error(f"Error extracting insights: {insights.get('error', 'Unknown error')}")
-                        else:
-                            st.warning("No clinical notes found in the dataset")
-                    else:
-                        st.warning("No clinical notes column found in the dataset")
-                        
-                except Exception as e:
-                    st.error(f"Error analyzing clinical notes: {str(e)}")
+
     
     # Smart Query Suggestions
     if not query.strip():

@@ -9,51 +9,63 @@ from sklearn.preprocessing import StandardScaler
 import seaborn as sns
 
 def render_visualization(data_processor):
-    """Render advanced analytics and visualization interface"""
+    """Render data exploration interface with comprehensive analytics"""
     
-    st.header("📊 Advanced Analytics")
-    st.markdown("Interactive data visualization and advanced analytics for clinical genomics research")
+    st.header("📊 Data Exploration")
     
     if data_processor is None:
-        st.warning("No data loaded. Please upload a dataset first.")
+        st.warning("No data loaded. Please load data first.")
         return
     
     df = data_processor.get_data()
     
-    # Sidebar for visualization controls
-    st.sidebar.markdown("## 📊 Visualization Controls")
+    if df.empty:
+        st.warning("Dataset is empty.")
+        return
     
-    # Select visualization type
-    viz_type = st.sidebar.selectbox(
-        "Select Analysis Type:",
-        [
-            "Patient Demographics",
-            "Clinical Metrics Analysis", 
-            "Genetic Variants Analysis",
-            "Correlation Analysis",
-            "Principal Component Analysis",
-            "Risk Stratification",
-            "Medication Analysis",
-            "Trial Eligibility Analysis"
-        ]
-    )
+    # Clean tabbed interface for different analyses
+    tab1, tab2, tab3, tab4 = st.tabs([
+        "👥 Demographics", 
+        "🧬 Genetic Analysis", 
+        "🏥 Clinical Metrics", 
+        "📈 Advanced Analytics"
+    ])
     
-    if viz_type == "Patient Demographics":
+    with tab1:
         render_demographics_analysis(df)
-    elif viz_type == "Clinical Metrics Analysis":
-        render_clinical_metrics_analysis(df)
-    elif viz_type == "Genetic Variants Analysis":
+    
+    with tab2:
         render_genetic_analysis(df)
-    elif viz_type == "Correlation Analysis":
-        render_correlation_analysis(df)
-    elif viz_type == "Principal Component Analysis":
-        render_pca_analysis(df)
-    elif viz_type == "Risk Stratification":
-        render_risk_stratification(df)
-    elif viz_type == "Medication Analysis":
-        render_medication_analysis(df)
-    elif viz_type == "Trial Eligibility Analysis":
-        render_trial_eligibility_analysis(df)
+    
+    with tab3:
+        render_clinical_metrics_analysis(df)
+    
+    with tab4:
+        # Sub-tabs for advanced analytics
+        subtab1, subtab2, subtab3, subtab4 = st.tabs([
+            "🔗 Correlations", 
+            "📊 PCA Analysis", 
+            "⚠️ Risk Stratification", 
+            "💊 Treatment & Trials"
+        ])
+        
+        with subtab1:
+            render_correlation_analysis(df)
+        
+        with subtab2:
+            render_pca_analysis(df)
+        
+        with subtab3:
+            render_risk_stratification(df)
+        
+        with subtab4:
+            col1, col2 = st.columns(2)
+            with col1:
+                st.markdown("### 💊 Medication Analysis")
+                render_medication_analysis(df)
+            with col2:
+                st.markdown("### 🧪 Trial Eligibility")
+                render_trial_eligibility_analysis(df)
 
 def render_demographics_analysis(df):
     """Render demographics analysis visualizations"""
