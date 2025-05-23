@@ -8,8 +8,10 @@ from components.dashboard import render_dashboard
 from components.search_interface import render_search_interface
 from components.data_overview import render_data_overview
 from components.visualization import render_visualization
+from components.intelligent_search import render_intelligent_search
 from utils.data_processor import DataProcessor
 from utils.vector_search import VectorSearch
+from utils.llm_processor import LLMProcessor
 
 # Configure page
 st.set_page_config(
@@ -24,6 +26,8 @@ if 'data_processor' not in st.session_state:
     st.session_state.data_processor = None
 if 'vector_search' not in st.session_state:
     st.session_state.vector_search = None
+if 'llm_processor' not in st.session_state:
+    st.session_state.llm_processor = LLMProcessor()
 if 'data_loaded' not in st.session_state:
     st.session_state.data_loaded = False
 
@@ -68,82 +72,48 @@ def main():
     if st.session_state.data_loaded:
         page = st.sidebar.selectbox(
             "Select a view:",
-            ["Dashboard", "Data Overview", "Semantic Search", "Advanced Analytics"]
+            ["Intelligent Search Hub", "Dashboard", "Data Overview", "Advanced Analytics"]
         )
     else:
-        page = "Data Upload"
-    
-    # File upload section (always available)
-    st.sidebar.markdown("---")
-    st.sidebar.subheader("Data Management")
-    
-    uploaded_file = st.sidebar.file_uploader(
-        "Upload Clinical Data (CSV)",
-        type=['csv'],
-        help="Upload a CSV file containing clinical genomics data"
-    )
-    
-    if uploaded_file is not None:
-        try:
-            with st.spinner("Processing uploaded data..."):
-                data_processor = DataProcessor()
-                df = data_processor.load_uploaded_data(uploaded_file)
-                
-                # Initialize vector search
-                vector_search = VectorSearch()
-                vector_search.build_index(df)
-                
-                st.session_state.data_processor = data_processor
-                st.session_state.vector_search = vector_search
-                st.session_state.data_loaded = True
-                
-            st.sidebar.success("Data uploaded successfully!")
-            st.rerun()
-            
-        except Exception as e:
-            st.sidebar.error(f"Error processing file: {str(e)}")
+        page = "Intelligent Search Hub"
     
     # Main content area
     if not st.session_state.data_loaded:
-        # Welcome screen
+        # Welcome screen with integrated search
+        render_intelligent_search(None, None, st.session_state.llm_processor)
+        
+        st.markdown("---")
         st.markdown("""
         ## Welcome to ClinGenome Navigator
         
-        **Professional Clinical Genomics Research Platform**
+        **AI-Powered Clinical Genomics Research Platform**
         
-        This platform provides advanced semantic search and analytics capabilities for clinical genomics research.
+        ### 🧠 Enhanced Features:
+        - **Intelligent Search**: Ask questions in natural language and get AI-powered insights
+        - **Clinical Analysis**: Extract patterns from clinical notes using advanced LLM processing
+        - **RAG Search**: Retrieval-augmented generation for precise clinical research queries
+        - **Smart Insights**: Automated identification of research opportunities and patient cohorts
         
-        ### Key Features:
-        - **Semantic Search**: Natural language queries across clinical and genomic data
-        - **Vector Database**: Efficient similarity search using advanced embeddings
-        - **Interactive Analytics**: Comprehensive data visualization and filtering
-        - **Export Capabilities**: Download search results and insights
-        
-        ### Getting Started:
-        1. The platform will automatically load the sample dataset containing 1,500 patient records
-        2. Alternatively, upload your own clinical genomics CSV file using the sidebar
-        3. Explore the data using the navigation menu once loaded
-        
-        ### Dataset Overview:
-        Our sample dataset includes:
-        - Patient demographics and clinical information
-        - Genetic variant data (APOL1, NPHS1, NPHS2, WT1, UMOD, COL4A3)
-        - Kidney function markers (eGFR, Creatinine)
-        - Diagnosis and medication information
-        - Clinical trial eligibility status
+        ### 📊 Dataset Overview:
+        Your clinical genomics dataset includes:
+        - **1,500 patient records** with comprehensive clinical and genetic data
+        - **Genetic variants**: APOL1, NPHS1, NPHS2, WT1, UMOD, COL4A3 analysis
+        - **Clinical metrics**: eGFR, Creatinine, diagnosis, and medication tracking
+        - **Trial eligibility**: Patient suitability assessment for clinical studies
+        - **Clinical notes**: Rich text data for AI-powered insights extraction
         """)
         
-        if st.button("🔄 Try Loading Default Dataset", type="primary"):
+        if st.button("🚀 Load Dataset & Start Research", type="primary"):
             st.rerun()
     
     else:
         # Render selected page
-        if page == "Dashboard":
+        if page == "Intelligent Search Hub":
+            render_intelligent_search(st.session_state.data_processor, st.session_state.vector_search, st.session_state.llm_processor)
+        elif page == "Dashboard":
             render_dashboard(st.session_state.data_processor, st.session_state.vector_search)
         elif page == "Data Overview":
             render_data_overview(st.session_state.data_processor)
-        elif page == "Semantic Search":
-            render_search_interface(st.session_state.data_processor, st.session_state.vector_search)
         elif page == "Advanced Analytics":
             render_visualization(st.session_state.data_processor)
 
