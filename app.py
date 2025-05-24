@@ -61,15 +61,17 @@ def main():
             <h1 style="color: white; margin: 0; font-size: 2.5rem; font-weight: bold;">🧬 ClinGenome Navigator</h1>
             <p style="color: #e6f3ff; margin: 0.5rem 0 0 0; font-size: 1.2rem;">GenAI based Clinico Genomics Research Platform</p>
         </div>
-        <div style="text-align: right; color: white;">
-            <div style="font-size: 0.9rem; margin-bottom: 0.3rem; opacity: 0.9;">Powered by</div>
-            <div style="display: flex; align-items: center; justify-content: flex-end;">
-                <svg width="24" height="24" viewBox="0 0 100 100" style="margin-right: 0.5rem;">
-                    <circle cx="50" cy="50" r="45" fill="none" stroke="white" stroke-width="8"/>
-                    <path d="M25,35 Q50,15 75,35 Q85,50 75,65 Q50,85 25,65 Q15,50 25,35 Z" fill="white"/>
-                    <circle cx="50" cy="50" r="15" fill="#1f77b4"/>
+        <div style="display: flex; align-items: center; color: white;">
+            <span style="font-size: 0.9rem; margin-right: 0.5rem;">Powered by</span>
+            <div style="background: white; padding: 0.3rem 0.6rem; border-radius: 20px; display: flex; align-items: center;">
+                <svg width="20" height="20" viewBox="0 0 100 100" style="margin-right: 0.4rem;">
+                    <g fill="#000">
+                        <path d="M30,20 Q50,5 70,20 Q85,35 70,50 Q85,65 70,80 Q50,95 30,80 Q15,65 30,50 Q15,35 30,20 Z"/>
+                        <circle cx="50" cy="50" r="8" fill="white"/>
+                        <path d="M35,35 L65,35 L50,65 Z" fill="white"/>
+                    </g>
                 </svg>
-                <span style="font-size: 1.1rem; font-weight: bold;">GPT-4o</span>
+                <span style="color: #000; font-size: 0.9rem; font-weight: bold;">GPT-4o</span>
             </div>
         </div>
     </div>
