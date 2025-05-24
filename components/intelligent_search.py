@@ -89,17 +89,29 @@ def render_intelligent_search(data_processor, vector_search, llm_processor):
                     st.info(llm_response.get("summary",
                                              "No summary available"))
 
-                    # Three column layout for key information
+                    # Three column layout for key information in colored boxes
                     col1, col2, col3 = st.columns(3)
 
                     with col1:
-                        st.markdown("#### Key Insights")
+                        # Blue container for Key Insights
+                        st.markdown("""
+                        <div style="background-color: #e8f4f8; padding: 1rem; border-radius: 8px; border-left: 4px solid #1f77b4; margin-bottom: 1rem;">
+                            <h4 style="color: #1f77b4; margin: 0 0 0.5rem 0;">Key Insights</h4>
+                        """, unsafe_allow_html=True)
+                        
                         insights = llm_response.get("key_insights", [])
                         for i, insight in enumerate(insights, 1):
                             st.markdown(f"**{i}.** {insight}")
+                        
+                        st.markdown("</div>", unsafe_allow_html=True)
 
                     with col2:
-                        st.markdown("#### Clinical Significance")
+                        # Purple container for Clinical Significance
+                        st.markdown("""
+                        <div style="background-color: #f3e8f8; padding: 1rem; border-radius: 8px; border-left: 4px solid #8e44ad; margin-bottom: 1rem;">
+                            <h4 style="color: #8e44ad; margin: 0 0 0.5rem 0;">Clinical Significance</h4>
+                        """, unsafe_allow_html=True)
+                        
                         st.write(
                             llm_response.get("clinical_significance",
                                              "No clinical significance noted"))
@@ -109,9 +121,16 @@ def render_intelligent_search(data_processor, vector_search, llm_processor):
                             llm_response.get(
                                 "patient_populations",
                                 "No specific populations identified"))
+                        
+                        st.markdown("</div>", unsafe_allow_html=True)
 
                     with col3:
-                        st.markdown("#### Suggested Actions")
+                        # Yellow container for Suggested Actions
+                        st.markdown("""
+                        <div style="background-color: #fff3cd; padding: 1rem; border-radius: 8px; border-left: 4px solid #ffc107; margin-bottom: 1rem;">
+                            <h4 style="color: #d97706; margin: 0 0 0.5rem 0;">Suggested Actions</h4>
+                        """, unsafe_allow_html=True)
+                        
                         actions = llm_response.get("recommended_actions", [])
                         for action in actions:
                             st.markdown(f"• {action}")
@@ -120,6 +139,8 @@ def render_intelligent_search(data_processor, vector_search, llm_processor):
                         references = llm_response.get("data_references", [])
                         for ref in references:
                             st.markdown(f"• {ref}")
+                        
+                        st.markdown("</div>", unsafe_allow_html=True)
 
                     # Perform vector search to find relevant patients
                     indices, scores = vector_search.search(
