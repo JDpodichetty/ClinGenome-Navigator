@@ -124,11 +124,11 @@ def render_intelligent_search(data_processor, vector_search, llm_processor):
 
                     # Find relevant patients based on query
                     st.markdown("---")
-                    st.markdown("### Relevant Patients Found")
+                    st.markdown(f"### Relevant Patients Found ({len(indices)} patients)")
 
                     # Perform vector search to find relevant patients
                     indices, scores = vector_search.search(
-                        query, top_k=10, similarity_threshold=0.1)
+                        query, top_k=100, similarity_threshold=0.1)
 
                     if indices:
                         relevant_df = df.iloc[indices].copy()
