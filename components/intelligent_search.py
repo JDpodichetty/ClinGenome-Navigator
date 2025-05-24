@@ -184,7 +184,7 @@ def render_intelligent_search(data_processor, vector_search, llm_processor):
                                         demo_summary.append({"Category": "Sex", "Value": sex, "Count": count, "Percentage": f"{(count/len(relevant_df)*100):.1f}%"})
                                 
                                 if 'Ethnicity' in relevant_df.columns:
-                                    eth_counts = relevant_df['Ethnicity'].value_counts().head(3)
+                                    eth_counts = relevant_df['Ethnicity'].value_counts()
                                     for eth, count in eth_counts.items():
                                         demo_summary.append({"Category": "Ethnicity", "Value": eth, "Count": count, "Percentage": f"{(count/len(relevant_df)*100):.1f}%"})
                                 
