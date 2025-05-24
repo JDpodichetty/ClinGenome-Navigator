@@ -111,8 +111,7 @@ def render_intelligent_search(data_processor, vector_search, llm_processor):
                                 "No specific populations identified"))
 
                     with col3:
-                        st.markdown(
-                            "#### Suggested Action (Caution: AI Generated)")
+                        st.markdown("#### Suggested Actions")
                         actions = llm_response.get("recommended_actions", [])
                         for action in actions:
                             st.markdown(f"• {action}")
@@ -122,42 +121,87 @@ def render_intelligent_search(data_processor, vector_search, llm_processor):
                         for ref in references:
                             st.markdown(f"• {ref}")
 
-                    # Find relevant patients based on query
-                    st.markdown("---")
-                    st.markdown("### Relevant Patients Found")
-
                     # Perform vector search to find relevant patients
                     indices, scores = vector_search.search(
                         query, top_k=1500, similarity_threshold=0.0)
 
                     if indices:
                         relevant_df = df.iloc[indices].copy()
-                        relevant_df['relevance_score'] = [
-                            f"{score:.3f}" for score in scores
-                        ]
 
-                        # Display results
-                        display_columns = [
-                            'PatientID', 'Age', 'Sex', 'Ethnicity',
-                            'Diagnosis', 'eGFR', 'APOL1_Variant',
-                            'Eligible_For_Trial', 'relevance_score'
-                        ]
-                        available_columns = [
-                            col for col in display_columns
-                            if col in relevant_df.columns
-                        ]
-
-                        st.dataframe(relevant_df[available_columns],
-                                     use_container_width=True,
-                                     height=300)
-
-                        # Analyze the cohort with LLM
+                        # 1. MOVED: Cohort Analysis BEFORE Relevant Patients Found
                         cohort_analysis = llm_processor.analyze_patient_cohort(
                             relevant_df, query)
 
                         if "error" not in cohort_analysis:
-                            st.markdown("#### 🧠 AI Cohort Analysis")
+                            st.markdown("---")
+                            st.markdown("### 🧠 Cohort Analysis")
 
+                            # Key metrics overview
+                            col1, col2, col3, col4 = st.columns(4)
+                            with col1:
+                                st.metric("Total Patients", len(relevant_df))
+                            with col2:
+                                trial_eligible = len(relevant_df[relevant_df.get('Eligible_For_Trial') == 'Yes']) if 'Eligible_For_Trial' in relevant_df.columns else 0
+                                st.metric("Trial Eligible", trial_eligible)
+                            with col3:
+                                avg_age = relevant_df['Age'].mean() if 'Age' in relevant_df.columns else 0
+                                st.metric("Avg Age", f"{avg_age:.1f}")
+                            with col4:
+                                avg_egfr = relevant_df['eGFR'].mean() if 'eGFR' in relevant_df.columns else 0
+                                st.metric("Avg eGFR", f"{avg_egfr:.1f}")
+
+                            # 3. ADDED: Visualization/Summary Tables
+                            
+                            # Demographics Summary Table
+                            col1, col2 = st.columns(2)
+                            with col1:
+                                st.markdown("#### Demographics Summary")
+                                demo_summary = []
+                                if 'Sex' in relevant_df.columns:
+                                    sex_counts = relevant_df['Sex'].value_counts()
+                                    for sex, count in sex_counts.items():
+                                        demo_summary.append({"Category": "Sex", "Value": sex, "Count": count, "Percentage": f"{(count/len(relevant_df)*100):.1f}%"})
+                                
+                                if 'Ethnicity' in relevant_df.columns:
+                                    eth_counts = relevant_df['Ethnicity'].value_counts().head(3)
+                                    for eth, count in eth_counts.items():
+                                        demo_summary.append({"Category": "Ethnicity", "Value": eth, "Count": count, "Percentage": f"{(count/len(relevant_df)*100):.1f}%"})
+                                
+                                if demo_summary:
+                                    st.dataframe(pd.DataFrame(demo_summary), use_container_width=True, hide_index=True)
+                            
+                            with col2:
+                                st.markdown("#### Clinical Characteristics")
+                                clinical_summary = []
+                                if 'Diagnosis' in relevant_df.columns:
+                                    diag_counts = relevant_df['Diagnosis'].value_counts().head(4)
+                                    for diag, count in diag_counts.items():
+                                        clinical_summary.append({"Category": "Diagnosis", "Value": diag, "Count": count, "Percentage": f"{(count/len(relevant_df)*100):.1f}%"})
+                                
+                                if 'APOL1_Variant' in relevant_df.columns:
+                                    high_risk_variants = ['G1/G1', 'G1/G2', 'G2/G2']
+                                    high_risk_count = len(relevant_df[relevant_df['APOL1_Variant'].isin(high_risk_variants)])
+                                    clinical_summary.append({"Category": "APOL1", "Value": "High-Risk Variants", "Count": high_risk_count, "Percentage": f"{(high_risk_count/len(relevant_df)*100):.1f}%"})
+                                
+                                if clinical_summary:
+                                    st.dataframe(pd.DataFrame(clinical_summary), use_container_width=True, hide_index=True)
+                            
+                            # Clinical Risk Stratification
+                            st.markdown("#### Risk Stratification")
+                            risk_data = []
+                            if 'eGFR' in relevant_df.columns:
+                                severe_ckd = len(relevant_df[relevant_df['eGFR'] < 30])
+                                moderate_ckd = len(relevant_df[(relevant_df['eGFR'] >= 30) & (relevant_df['eGFR'] < 60)])
+                                mild_ckd = len(relevant_df[relevant_df['eGFR'] >= 60])
+                                
+                                risk_data = [
+                                    {"Risk Level": "Severe (eGFR < 30)", "Patient Count": severe_ckd, "Percentage": f"{(severe_ckd/len(relevant_df)*100):.1f}%"},
+                                    {"Risk Level": "Moderate (eGFR 30-59)", "Patient Count": moderate_ckd, "Percentage": f"{(moderate_ckd/len(relevant_df)*100):.1f}%"},
+                                    {"Risk Level": "Mild (eGFR ≥ 60)", "Patient Count": mild_ckd, "Percentage": f"{(mild_ckd/len(relevant_df)*100):.1f}%"}
+                                ]
+                                st.dataframe(pd.DataFrame(risk_data), use_container_width=True, hide_index=True)
+
+                            # AI Analysis Results
                             col1, col2 = st.columns(2)
 
                             with col1:
@@ -180,11 +224,24 @@ def render_intelligent_search(data_processor, vector_search, llm_processor):
                                         "trial_suitability",
                                         "No assessment available"))
 
-                                st.markdown("**Recommendations:**")
-                                recs = cohort_analysis.get(
-                                    "recommendations", [])
-                                for rec in recs:
-                                    st.markdown(f"• {rec}")
+                        # 2. MOVED: Relevant Patients Found section comes AFTER Cohort Analysis
+                        st.markdown("---")
+                        st.markdown("### Relevant Patients Found")
+
+                        # 2. MODIFIED: Include clinical notes and drop relevance score
+                        display_columns = [
+                            'PatientID', 'Age', 'Sex', 'Ethnicity',
+                            'Diagnosis', 'eGFR', 'APOL1_Variant', 
+                            'Clinical_Notes', 'Eligible_For_Trial'
+                        ]
+                        available_columns = [
+                            col for col in display_columns
+                            if col in relevant_df.columns
+                        ]
+
+                        st.dataframe(relevant_df[available_columns],
+                                     use_container_width=True,
+                                     height=300)
 
                     else:
                         st.warning(
