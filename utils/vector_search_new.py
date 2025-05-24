@@ -175,8 +175,13 @@ class VectorSearch:
         query_lower = query.lower()
         filtered_df = self.df.copy()
         
-        # Age filtering
+        # Age filtering - improved patterns
         age_match = re.search(r'(?:above|over|greater than|older than)\s+(?:age\s+)?(\d+)', query_lower)
+        if not age_match:
+            age_match = re.search(r'(?:age\s+)?(\d+)\s+(?:and\s+)?(?:above|over|older)', query_lower)
+        if not age_match:
+            age_match = re.search(r'(?:patients?\s+)?(?:with\s+)?above\s+age\s+(\d+)', query_lower)
+        
         if age_match and 'Age' in filtered_df.columns:
             age_threshold = int(age_match.group(1))
             filtered_df = filtered_df[filtered_df['Age'] > age_threshold]
@@ -208,12 +213,16 @@ class VectorSearch:
         elif 'female' in query_lower and 'male' not in query_lower and 'Sex' in filtered_df.columns:
             filtered_df = filtered_df[filtered_df['Sex'] == 'F']
         
-        # Ethnicity filtering
-        ethnicities = ['african american', 'caucasian', 'hispanic', 'asian']
-        for ethnicity in ethnicities:
-            if ethnicity in query_lower and 'Ethnicity' in filtered_df.columns:
-                ethnicity_value = ethnicity.title().replace('American', 'American')
-                filtered_df = filtered_df[filtered_df['Ethnicity'].str.lower() == ethnicity]
+        # Ethnicity filtering - improved matching
+        if 'Ethnicity' in filtered_df.columns:
+            if 'african american' in query_lower:
+                filtered_df = filtered_df[filtered_df['Ethnicity'].str.contains('African American', case=False, na=False)]
+            elif 'caucasian' in query_lower:
+                filtered_df = filtered_df[filtered_df['Ethnicity'].str.contains('Caucasian', case=False, na=False)]
+            elif 'hispanic' in query_lower:
+                filtered_df = filtered_df[filtered_df['Ethnicity'].str.contains('Hispanic', case=False, na=False)]
+            elif 'asian' in query_lower:
+                filtered_df = filtered_df[filtered_df['Ethnicity'].str.contains('Asian', case=False, na=False)]
         
         # Trial eligibility filtering
         if 'eligible' in query_lower and 'trial' in query_lower and 'Eligible_For_Trial' in filtered_df.columns:
