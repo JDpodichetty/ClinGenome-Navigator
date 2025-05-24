@@ -64,11 +64,12 @@ def main():
         <div style="display: flex; align-items: center; color: white;">
             <span style="font-size: 0.9rem; margin-right: 0.5rem;">Powered by</span>
             <div style="background: white; padding: 0.3rem 0.6rem; border-radius: 20px; display: flex; align-items: center;">
-                <svg width="20" height="20" viewBox="0 0 100 100" style="margin-right: 0.4rem;">
+                <svg width="24" height="24" viewBox="0 0 100 100" style="margin-right: 0.4rem;">
                     <g fill="#000">
-                        <path d="M30,20 Q50,5 70,20 Q85,35 70,50 Q85,65 70,80 Q50,95 30,80 Q15,65 30,50 Q15,35 30,20 Z"/>
-                        <circle cx="50" cy="50" r="8" fill="white"/>
-                        <path d="M35,35 L65,35 L50,65 Z" fill="white"/>
+                        <path d="M20,30 Q30,15 50,25 Q70,15 80,30 Q85,50 70,65 Q50,75 30,65 Q15,50 20,30 Z" opacity="0.8"/>
+                        <path d="M30,25 Q50,10 70,25 Q75,40 60,55 Q40,65 20,55 Q25,40 30,25 Z" opacity="0.6"/>
+                        <path d="M35,35 Q50,20 65,35 Q70,50 55,65 Q40,70 25,55 Q30,40 35,35 Z" opacity="0.9"/>
+                        <circle cx="50" cy="50" r="6" fill="white"/>
                     </g>
                 </svg>
                 <span style="color: #000; font-size: 0.9rem; font-weight: bold;">GPT-4o</span>
