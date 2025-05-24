@@ -195,7 +195,7 @@ def render_intelligent_search(data_processor, vector_search, llm_processor):
                                 st.markdown("#### Clinical Characteristics")
                                 clinical_summary = []
                                 if 'Diagnosis' in relevant_df.columns:
-                                    diag_counts = relevant_df['Diagnosis'].value_counts().head(4)
+                                    diag_counts = relevant_df['Diagnosis'].value_counts()
                                     for diag, count in diag_counts.items():
                                         clinical_summary.append({"Category": "Diagnosis", "Value": diag, "Count": count, "Percentage": f"{(count/len(relevant_df)*100):.1f}%"})
                                 
