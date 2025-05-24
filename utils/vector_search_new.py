@@ -196,8 +196,13 @@ class VectorSearch:
             age_value = int(age_match.group(1))
             filtered_df = filtered_df[abs(filtered_df['Age'] - age_value) <= 2]
         
-        # eGFR filtering
+        # eGFR filtering - improved patterns
         egfr_match = re.search(r'egfr\s+(?:below|under|less than)\s+(\d+)', query_lower)
+        if not egfr_match:
+            egfr_match = re.search(r'(?:with\s+)?egfr\s+(?:below|under|less than)\s+(\d+)', query_lower)
+        if not egfr_match:
+            egfr_match = re.search(r'(?:below|under|less than)\s+(\d+)\s+egfr', query_lower)
+        
         if egfr_match and 'eGFR' in filtered_df.columns:
             egfr_threshold = float(egfr_match.group(1))
             filtered_df = filtered_df[filtered_df['eGFR'] < egfr_threshold]
