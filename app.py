@@ -63,16 +63,9 @@ def main():
         </div>
         <div style="display: flex; align-items: center; color: white;">
             <span style="font-size: 0.9rem; margin-right: 0.5rem;">Powered by</span>
-            <div style="background: white; padding: 0.3rem 0.6rem; border-radius: 20px; display: flex; align-items: center;">
-                <svg width="24" height="24" viewBox="0 0 100 100" style="margin-right: 0.4rem;">
-                    <g fill="#000">
-                        <path d="M20,30 Q30,15 50,25 Q70,15 80,30 Q85,50 70,65 Q50,75 30,65 Q15,50 20,30 Z" opacity="0.8"/>
-                        <path d="M30,25 Q50,10 70,25 Q75,40 60,55 Q40,65 20,55 Q25,40 30,25 Z" opacity="0.6"/>
-                        <path d="M35,35 Q50,20 65,35 Q70,50 55,65 Q40,70 25,55 Q30,40 35,35 Z" opacity="0.9"/>
-                        <circle cx="50" cy="50" r="6" fill="white"/>
-                    </g>
-                </svg>
-                <span style="color: #000; font-size: 0.9rem; font-weight: bold;">GPT-4o</span>
+            <div style="background: white; padding: 0.4rem 0.8rem; border-radius: 25px; display: flex; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                <div style="width: 20px; height: 20px; background: linear-gradient(45deg, #000 25%, transparent 25%, transparent 75%, #000 75%), linear-gradient(45deg, #000 25%, transparent 25%, transparent 75%, #000 75%); background-size: 4px 4px; background-position: 0 0, 2px 2px; border-radius: 50%; margin-right: 0.5rem; border: 2px solid #000;"></div>
+                <span style="color: #000; font-size: 1rem; font-weight: bold; letter-spacing: -0.5px;">GPT-4o</span>
             </div>
         </div>
     </div>
