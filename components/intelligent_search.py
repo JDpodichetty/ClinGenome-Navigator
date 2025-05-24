@@ -124,7 +124,7 @@ def render_intelligent_search(data_processor, vector_search, llm_processor):
 
                     # Find relevant patients based on query
                     st.markdown("---")
-                    st.markdown(f"### Relevant Patients Found ({len(indices)} patients)")
+                    st.markdown("### Relevant Patients Found")
 
                     # Perform vector search to find relevant patients
                     indices, scores = vector_search.search(
