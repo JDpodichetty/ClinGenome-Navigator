@@ -10,7 +10,7 @@ from components.data_overview import render_data_overview
 from components.visualization import render_visualization
 from components.intelligent_search import render_intelligent_search
 from utils.data_processor import DataProcessor
-from utils.vector_search import VectorSearch
+from utils.vector_search_new import VectorSearch
 from utils.llm_processor import LLMProcessor
 
 # Configure page
