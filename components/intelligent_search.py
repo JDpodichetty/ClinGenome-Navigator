@@ -128,7 +128,7 @@ def render_intelligent_search(data_processor, vector_search, llm_processor):
 
                     # Perform vector search to find relevant patients
                     indices, scores = vector_search.search(
-                        query, top_k=100, similarity_threshold=0.1)
+                        query, top_k=1500, similarity_threshold=0.1)
 
                     if indices:
                         relevant_df = df.iloc[indices].copy()
