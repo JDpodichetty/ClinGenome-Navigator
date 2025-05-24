@@ -63,7 +63,9 @@ def main():
         </div>
         <div style="display: flex; align-items: center; color: white;">
             <span style="font-size: 0.9rem; margin-right: 0.5rem;">Powered by</span>
-            <img src="./attached_assets/GPT 4o logo.jpg" style="height: 32px; width: auto;" alt="GPT-4o" />
+            <div style="background: white; padding: 0.3rem 0.6rem; border-radius: 15px; display: flex; align-items: center;">
+                <span style="color: #000; font-size: 0.9rem; font-weight: bold;">GPT-4o</span>
+            </div>
         </div>
     </div>
     """, unsafe_allow_html=True)
