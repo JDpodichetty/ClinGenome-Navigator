@@ -63,10 +63,7 @@ def main():
         </div>
         <div style="display: flex; align-items: center; color: white;">
             <span style="font-size: 0.9rem; margin-right: 0.5rem;">Powered by</span>
-            <div style="background: white; padding: 0.4rem 0.8rem; border-radius: 25px; display: flex; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                <div style="width: 20px; height: 20px; background: linear-gradient(45deg, #000 25%, transparent 25%, transparent 75%, #000 75%), linear-gradient(45deg, #000 25%, transparent 25%, transparent 75%, #000 75%); background-size: 4px 4px; background-position: 0 0, 2px 2px; border-radius: 50%; margin-right: 0.5rem; border: 2px solid #000;"></div>
-                <span style="color: #000; font-size: 1rem; font-weight: bold; letter-spacing: -0.5px;">GPT-4o</span>
-            </div>
+            <img src="./attached_assets/GPT 4o logo.jpg" style="height: 32px; width: auto;" alt="GPT-4o" />
         </div>
     </div>
     """, unsafe_allow_html=True)
