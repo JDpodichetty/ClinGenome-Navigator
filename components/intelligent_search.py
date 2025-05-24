@@ -228,7 +228,7 @@ def render_intelligent_search(data_processor, vector_search, llm_processor):
                             with col1:
                                 st.markdown("""
                                 <div style="background-color: #e8f4f8; padding: 1rem; border-radius: 8px; border-left: 4px solid #1f77b4;">
-                                    <h4 style="color: #1f77b4; margin: 0 0 0.5rem 0;">🔍 Key Insights</h4>
+                                    <h4 style="color: #1f77b4; margin: 0 0 0.5rem 0;">Key Insights</h4>
                                 """, unsafe_allow_html=True)
                                 
                                 cohort_summary = cohort_analysis.get("cohort_summary", "No summary available")
@@ -245,7 +245,7 @@ def render_intelligent_search(data_processor, vector_search, llm_processor):
                             with col2:
                                 st.markdown("""
                                 <div style="background-color: #f3e8f8; padding: 1rem; border-radius: 8px; border-left: 4px solid #8e44ad;">
-                                    <h4 style="color: #8e44ad; margin: 0 0 0.5rem 0;">🧬 Clinical Significance</h4>
+                                    <h4 style="color: #8e44ad; margin: 0 0 0.5rem 0;">Clinical Significance</h4>
                                 """, unsafe_allow_html=True)
                                 
                                 trial_suitability = cohort_analysis.get("trial_suitability", "No assessment available")
@@ -262,7 +262,7 @@ def render_intelligent_search(data_processor, vector_search, llm_processor):
                             with col3:
                                 st.markdown("""
                                 <div style="background-color: #fff3cd; padding: 1rem; border-radius: 8px; border-left: 4px solid #ffc107;">
-                                    <h4 style="color: #d97706; margin: 0 0 0.5rem 0;">⚠️ Suggested Action (Caution: AI Generated)</h4>
+                                    <h4 style="color: #d97706; margin: 0 0 0.5rem 0;">Suggested Action (Caution: AI Generated)</h4>
                                 """, unsafe_allow_html=True)
                                 
                                 recommendations = cohort_analysis.get("recommendations", [])
