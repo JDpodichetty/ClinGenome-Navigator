@@ -6,6 +6,157 @@ from typing import Dict, List
 import json
 
 
+def render_clinical_notes_analysis(df, llm_processor):
+    """Render clinical notes analysis section"""
+    st.header("📝 Clinical Notes Intelligence")
+    st.markdown("*Deep analysis of clinical narratives and patient observations*")
+    
+    if 'Clinical_Notes' not in df.columns:
+        st.error("No clinical notes data available in the dataset.")
+        return
+    
+    # Clinical notes overview
+    notes_data = df['Clinical_Notes'].dropna()
+    total_notes = len(notes_data)
+    
+    st.markdown("### Clinical Notes Overview")
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        st.metric("Total Notes", total_notes)
+    with col2:
+        avg_length = notes_data.str.len().mean()
+        st.metric("Avg. Note Length", f"{avg_length:.0f} chars")
+    with col3:
+        unique_notes = notes_data.nunique()
+        st.metric("Unique Notes", unique_notes)
+    with col4:
+        completion_rate = (total_notes / len(df)) * 100
+        st.metric("Documentation Rate", f"{completion_rate:.1f}%")
+    
+    # Analysis options
+    st.markdown("### Analysis Options")
+    analysis_type = st.selectbox(
+        "Choose analysis type:",
+        ["Treatment Patterns", "Disease Progression", "Risk Factors", "Medication Responses", "Trial Readiness"]
+    )
+    
+    # Sample size selection
+    sample_size = st.slider("Number of notes to analyze:", 10, min(100, total_notes), 50)
+    
+    if st.button("🔍 Analyze Clinical Notes", type="primary"):
+        with st.spinner("Analyzing clinical narratives..."):
+            # Sample clinical notes for analysis
+            sample_notes = notes_data.sample(n=sample_size, random_state=42).tolist()
+            
+            # Get corresponding patient data for context
+            sample_indices = notes_data.sample(n=sample_size, random_state=42).index
+            sample_patients = df.loc[sample_indices]
+            
+            # Create patient context summary
+            patient_context = {
+                "total_patients": len(sample_patients),
+                "age_range": f"{sample_patients['Age'].min()}-{sample_patients['Age'].max()}",
+                "diagnoses": sample_patients['Diagnosis'].value_counts().head(5).to_dict(),
+                "avg_egfr": round(sample_patients['eGFR'].mean(), 1)
+            }
+            
+            # Perform LLM analysis
+            insights = llm_processor.extract_clinical_insights(sample_notes, patient_context)
+            
+            if "error" not in insights:
+                st.markdown("---")
+                st.markdown("### 📊 Clinical Intelligence Results")
+                
+                # Executive summary
+                st.markdown("#### Executive Summary")
+                st.info(insights.get("overall_summary", "No summary available"))
+                
+                # Main insights in columns
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    st.markdown("#### 🔍 Disease Patterns")
+                    patterns = insights.get("disease_patterns", [])
+                    for i, pattern in enumerate(patterns[:5], 1):
+                        st.markdown(f"**{i}.** {pattern}")
+                    
+                    st.markdown("#### 💊 Treatment Insights")
+                    treatments = insights.get("treatment_insights", [])
+                    for i, treatment in enumerate(treatments[:5], 1):
+                        st.markdown(f"**{i}.** {treatment}")
+                
+                with col2:
+                    st.markdown("#### ⚠️ Risk Factors")
+                    risks = insights.get("risk_factors", [])
+                    for i, risk in enumerate(risks[:5], 1):
+                        st.markdown(f"**{i}.** {risk}")
+                    
+                    st.markdown("#### 🧪 Trial Considerations")
+                    trials = insights.get("trial_considerations", [])
+                    for i, trial in enumerate(trials[:5], 1):
+                        st.markdown(f"**{i}.** {trial}")
+                
+                # Important findings
+                if insights.get("urgent_findings"):
+                    st.markdown("#### 🚨 Urgent Findings")
+                    st.error("**Important clinical observations requiring attention:**")
+                    for finding in insights.get("urgent_findings", []):
+                        st.markdown(f"• {finding}")
+                
+                # Research opportunities
+                if insights.get("research_opportunities"):
+                    st.markdown("#### 🔬 Research Opportunities")
+                    st.success("**Potential areas for pharmaceutical research:**")
+                    for opportunity in insights.get("research_opportunities", []):
+                        st.markdown(f"• {opportunity}")
+                
+                # Medication patterns
+                if insights.get("medication_patterns"):
+                    st.markdown("#### 💉 Medication Patterns")
+                    for pattern in insights.get("medication_patterns", []):
+                        st.markdown(f"• {pattern}")
+            
+            else:
+                st.error(f"Analysis failed: {insights['error']}")
+    
+    # Quick insights from clinical notes data
+    st.markdown("---")
+    st.markdown("### 📈 Quick Clinical Notes Statistics")
+    
+    # Word frequency analysis
+    if st.checkbox("Show Common Terms Analysis"):
+        from collections import Counter
+        import re
+        
+        # Extract common medical terms
+        all_text = " ".join(notes_data.astype(str))
+        words = re.findall(r'\b[a-zA-Z]{4,}\b', all_text.lower())
+        
+        # Filter for medical-relevant terms
+        medical_terms = [word for word in words if len(word) > 4 and 
+                        any(term in word for term in ['kidney', 'renal', 'ckd', 'egfr', 'creatinine', 
+                                                     'protein', 'blood', 'pressure', 'medication', 
+                                                     'treatment', 'therapy', 'patient', 'clinical'])]
+        
+        if medical_terms:
+            term_counts = Counter(medical_terms).most_common(10)
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                st.markdown("**Most Common Medical Terms:**")
+                for term, count in term_counts:
+                    st.markdown(f"• {term}: {count} mentions")
+            
+            with col2:
+                # Create a simple bar chart
+                terms, counts = zip(*term_counts)
+                fig = px.bar(x=list(counts), y=list(terms), orientation='h',
+                           title="Clinical Terms Frequency")
+                fig.update_layout(height=400)
+                st.plotly_chart(fig, use_container_width=True)
+
+
 def render_intelligent_search(data_processor, vector_search, llm_processor):
     """Render the intelligent search hub with LLM-powered RAG capabilities"""
 
@@ -17,6 +168,14 @@ def render_intelligent_search(data_processor, vector_search, llm_processor):
         return
 
     df = data_processor.get_data()
+    
+    # Check if Clinical Notes Analysis is requested
+    if st.session_state.get('show_clinical_notes', False):
+        render_clinical_notes_analysis(df, llm_processor)
+        if st.button("← Back to Search"):
+            st.session_state.show_clinical_notes = False
+            st.rerun()
+        return
 
     # Description of the tool
     st.markdown("""
@@ -45,7 +204,7 @@ def render_intelligent_search(data_processor, vector_search, llm_processor):
     # Quick action buttons
     st.markdown("### ⚡ Quick Actions")
 
-    col1, col2, col3, col4 = st.columns(4)
+    col1, col2, col3, col4, col5 = st.columns(5)
 
     with col1:
         if st.button("🧬 Genetic Insights", use_container_width=True):
@@ -66,6 +225,11 @@ def render_intelligent_search(data_processor, vector_search, llm_processor):
         if st.button("📊 Research Summary", use_container_width=True):
             query = "Generate a comprehensive research summary of this clinical dataset"
             search_clicked = True
+
+    with col5:
+        if st.button("📝 Clinical Notes", use_container_width=True):
+            st.session_state.show_clinical_notes = True
+            st.rerun()
 
     # Process query with LLM
     if search_clicked and query.strip():
