@@ -207,7 +207,7 @@ def render_intelligent_search(data_processor, vector_search, llm_processor):
                                 if clinical_summary:
                                     st.dataframe(pd.DataFrame(clinical_summary), use_container_width=True, hide_index=True)
                             
-                            # Clinical Risk Stratification
+                            # Clinical Risk Stratification - moved to appear BEFORE colored boxes
                             st.markdown("#### Risk Stratification")
                             risk_data = []
                             if 'eGFR' in relevant_df.columns:
