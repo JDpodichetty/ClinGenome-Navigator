@@ -54,11 +54,24 @@ def load_default_data():
     return False
 
 def main():
-    # Static header ribbon
+    # Static header ribbon with GPT-4o logo
     st.markdown("""
-    <div style="background: linear-gradient(90deg, #1f77b4 0%, #2e8b57 100%); padding: 1rem; margin: -1rem -1rem 2rem -1rem; border-radius: 0;">
-        <h1 style="color: white; margin: 0; font-size: 2.5rem; font-weight: bold;">🧬 ClinGenome Navigator</h1>
-        <p style="color: #e6f3ff; margin: 0.5rem 0 0 0; font-size: 1.2rem;">GenAI based Clinico Genomics Research Platform</p>
+    <div style="background: linear-gradient(90deg, #1f77b4 0%, #2e8b57 100%); padding: 1rem; margin: -1rem -1rem 2rem -1rem; border-radius: 0; display: flex; justify-content: space-between; align-items: center;">
+        <div>
+            <h1 style="color: white; margin: 0; font-size: 2.5rem; font-weight: bold;">🧬 ClinGenome Navigator</h1>
+            <p style="color: #e6f3ff; margin: 0.5rem 0 0 0; font-size: 1.2rem;">GenAI based Clinico Genomics Research Platform</p>
+        </div>
+        <div style="text-align: right; color: white;">
+            <div style="font-size: 0.9rem; margin-bottom: 0.3rem; opacity: 0.9;">Powered by</div>
+            <div style="display: flex; align-items: center; justify-content: flex-end;">
+                <svg width="24" height="24" viewBox="0 0 100 100" style="margin-right: 0.5rem;">
+                    <circle cx="50" cy="50" r="45" fill="none" stroke="white" stroke-width="8"/>
+                    <path d="M25,35 Q50,15 75,35 Q85,50 75,65 Q50,85 25,65 Q15,50 25,35 Z" fill="white"/>
+                    <circle cx="50" cy="50" r="15" fill="#1f77b4"/>
+                </svg>
+                <span style="font-size: 1.1rem; font-weight: bold;">GPT-4o</span>
+            </div>
+        </div>
     </div>
     """, unsafe_allow_html=True)
     
