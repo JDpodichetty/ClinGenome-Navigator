@@ -352,19 +352,29 @@ def render_genetic_analysis(df):
             st.plotly_chart(fig_mut_count, use_container_width=True)
         
         with col2:
-            # Mutation burden by diagnosis
-            if 'Diagnosis' in df.columns:
-                df_with_burden = df.copy()
-                df_with_burden['mutation_burden'] = genetic_binary['total_mutations']
+            # Gene interaction summary
+            st.markdown("### 🧬 Gene Interaction Summary")
+            
+            # Show mutation co-occurrence
+            if len(available_genetic) > 1:
+                cooccurrence_data = []
+                for i, gene1 in enumerate(available_genetic):
+                    for gene2 in available_genetic[i+1:]:
+                        both_mut = ((df[gene1] == 'Mut') & (df[gene2] == 'Mut')).sum()
+                        total_valid = ((df[gene1].isin(['Mut', 'WT'])) & 
+                                     (df[gene2].isin(['Mut', 'WT']))).sum()
+                        if total_valid > 0:
+                            cooccurrence_rate = (both_mut / total_valid) * 100
+                            cooccurrence_data.append({
+                                'Gene Pair': f"{gene1} + {gene2}",
+                                'Co-occurrence Rate (%)': cooccurrence_rate,
+                                'Patients': both_mut
+                            })
                 
-                fig_burden_diag = px.box(
-                    df_with_burden,
-                    x='Diagnosis',
-                    y='mutation_burden',
-                    title="Mutation Burden by Diagnosis"
-                )
-                fig_burden_diag.update_xaxes(tickangle=45)
-                st.plotly_chart(fig_burden_diag, use_container_width=True)
+                if cooccurrence_data:
+                    cooccurrence_df = pd.DataFrame(cooccurrence_data)
+                    cooccurrence_df = cooccurrence_df.sort_values('Co-occurrence Rate (%)', ascending=False)
+                    st.dataframe(cooccurrence_df, use_container_width=True)
 
 def render_correlation_analysis(df):
     """Render correlation analysis"""
