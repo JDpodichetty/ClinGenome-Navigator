@@ -13,6 +13,18 @@ def render_visualization(data_processor):
     
     st.header("📊 Data Exploration")
     
+    # Enhanced tab styling for Data Exploration
+    st.markdown("""
+    <style>
+    .stTabs [data-baseweb="tab"] {
+        font-size: 20px !important;
+        font-weight: bold !important;
+        padding: 14px 20px !important;
+        height: 55px !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+    
     if data_processor is None:
         st.warning("No data loaded. Please load data first.")
         return

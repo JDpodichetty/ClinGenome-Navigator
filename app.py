@@ -107,7 +107,7 @@ def main():
         }
         .stTabs [data-baseweb="tab"] {
             height: 60px;
-            font-size: 18px !important;
+            font-size: 22px !important;
             font-weight: bold !important;
             background-color: #f0f2f6;
             border-radius: 8px 8px 0 0;
