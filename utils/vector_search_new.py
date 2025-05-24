@@ -168,84 +168,55 @@ class VectorSearch:
         return indices, scores
 
     def _apply_numerical_filters(self, query: str) -> Optional[List[int]]:
-        """Apply numerical filters based on query text"""
+        """Apply direct, simple filtering - no complex regex patterns"""
         if self.df is None:
             return None
         
         query_lower = query.lower()
         filtered_df = self.df.copy()
+        original_size = len(filtered_df)
         
-        # Age filtering - improved patterns
-        age_match = re.search(r'(?:above|over|greater than|older than)\s+(?:age\s+)?(\d+)', query_lower)
-        if not age_match:
-            age_match = re.search(r'(?:age\s+)?(\d+)\s+(?:and\s+)?(?:above|over|older)', query_lower)
-        if not age_match:
-            age_match = re.search(r'(?:patients?\s+)?(?:with\s+)?above\s+age\s+(\d+)', query_lower)
+        # High-risk patients (direct keyword matching)
+        if any(keyword in query_lower for keyword in ['high risk', 'high-risk', 'immediate clinical attention', 'need immediate']):
+            if 'APOL1_Variant' in filtered_df.columns and 'eGFR' in filtered_df.columns and 'Diagnosis' in filtered_df.columns:
+                # High-risk APOL1 variants OR severe kidney dysfunction OR advanced CKD
+                high_risk_apol1 = filtered_df['APOL1_Variant'].isin(['G1/G1', 'G1/G2', 'G2/G2'])
+                severe_kidney = filtered_df['eGFR'] < 30
+                advanced_ckd = filtered_df['Diagnosis'].isin(['CKD Stage 4', 'CKD Stage 5'])
+                filtered_df = filtered_df[high_risk_apol1 | severe_kidney | advanced_ckd]
         
-        if age_match and 'Age' in filtered_df.columns:
-            age_threshold = int(age_match.group(1))
-            filtered_df = filtered_df[filtered_df['Age'] > age_threshold]
+        # Simple age filtering (exact phrase matching)
+        elif 'above age 32' in query_lower or 'over age 32' in query_lower:
+            if 'Age' in filtered_df.columns:
+                filtered_df = filtered_df[filtered_df['Age'] > 32]
         
-        age_match = re.search(r'(?:below|under|less than|younger than)\s+(?:age\s+)?(\d+)', query_lower)
-        if age_match and 'Age' in filtered_df.columns:
-            age_threshold = int(age_match.group(1))
-            filtered_df = filtered_df[filtered_df['Age'] < age_threshold]
+        # Simple eGFR filtering (exact phrase matching)
+        elif any(phrase in query_lower for phrase in ['egfr below 30', 'egfr under 30', 'egfr less than 30', 'egfr < 30']):
+            if 'eGFR' in filtered_df.columns:
+                filtered_df = filtered_df[filtered_df['eGFR'] < 30]
         
-        age_match = re.search(r'age\s+(\d+)', query_lower)
-        if age_match and 'Age' in filtered_df.columns:
-            age_value = int(age_match.group(1))
-            filtered_df = filtered_df[abs(filtered_df['Age'] - age_value) <= 2]
+        # Trial eligibility
+        elif 'trial eligible' in query_lower or 'eligible for trial' in query_lower:
+            if 'Eligible_For_Trial' in filtered_df.columns:
+                filtered_df = filtered_df[filtered_df['Eligible_For_Trial'] == 'Yes']
         
-        # eGFR filtering - improved patterns
-        egfr_match = re.search(r'egfr\s+(?:below|under|less than)\s+(\d+)', query_lower)
-        if not egfr_match:
-            egfr_match = re.search(r'(?:with\s+)?egfr\s+(?:below|under|less than)\s+(\d+)', query_lower)
-        if not egfr_match:
-            egfr_match = re.search(r'(?:below|under|less than)\s+(\d+)\s+egfr', query_lower)
+        # Specific APOL1 variants
+        elif 'g2/g2' in query_lower:
+            if 'APOL1_Variant' in filtered_df.columns:
+                filtered_df = filtered_df[filtered_df['APOL1_Variant'] == 'G2/G2']
         
-        if egfr_match and 'eGFR' in filtered_df.columns:
-            egfr_threshold = float(egfr_match.group(1))
-            filtered_df = filtered_df[filtered_df['eGFR'] < egfr_threshold]
+        # Male patients
+        elif 'male patients' in query_lower and 'female' not in query_lower:
+            if 'Sex' in filtered_df.columns:
+                filtered_df = filtered_df[filtered_df['Sex'] == 'M']
         
-        egfr_match = re.search(r'egfr\s+(?:above|over|greater than)\s+(\d+)', query_lower)
-        if egfr_match and 'eGFR' in filtered_df.columns:
-            egfr_threshold = float(egfr_match.group(1))
-            filtered_df = filtered_df[filtered_df['eGFR'] > egfr_threshold]
+        # Female patients  
+        elif 'female patients' in query_lower and 'male' not in query_lower:
+            if 'Sex' in filtered_df.columns:
+                filtered_df = filtered_df[filtered_df['Sex'] == 'F']
         
-        # Sex filtering
-        if 'male' in query_lower and 'female' not in query_lower and 'Sex' in filtered_df.columns:
-            filtered_df = filtered_df[filtered_df['Sex'] == 'M']
-        elif 'female' in query_lower and 'male' not in query_lower and 'Sex' in filtered_df.columns:
-            filtered_df = filtered_df[filtered_df['Sex'] == 'F']
-        
-        # Ethnicity filtering - improved matching
-        if 'Ethnicity' in filtered_df.columns:
-            if 'african american' in query_lower:
-                filtered_df = filtered_df[filtered_df['Ethnicity'].str.contains('African American', case=False, na=False)]
-            elif 'caucasian' in query_lower:
-                filtered_df = filtered_df[filtered_df['Ethnicity'].str.contains('Caucasian', case=False, na=False)]
-            elif 'hispanic' in query_lower:
-                filtered_df = filtered_df[filtered_df['Ethnicity'].str.contains('Hispanic', case=False, na=False)]
-            elif 'asian' in query_lower:
-                filtered_df = filtered_df[filtered_df['Ethnicity'].str.contains('Asian', case=False, na=False)]
-        
-        # Trial eligibility filtering
-        if 'eligible' in query_lower and 'trial' in query_lower and 'Eligible_For_Trial' in filtered_df.columns:
-            filtered_df = filtered_df[filtered_df['Eligible_For_Trial'] == 'Yes']
-        
-        # CKD stage filtering
-        if 'ckd' in query_lower and 'Diagnosis' in filtered_df.columns:
-            filtered_df = filtered_df[filtered_df['Diagnosis'].str.contains('CKD', case=False, na=False)]
-        
-        # APOL1 high-risk variants
-        if 'apol1' in query_lower and ('high-risk' in query_lower or 'mutation' in query_lower) and 'APOL1_Variant' in filtered_df.columns:
-            high_risk_variants = ['G1/G2', 'G1/G1', 'G2/G2']
-            filtered_df = filtered_df[filtered_df['APOL1_Variant'].isin(high_risk_variants)]
-        
-        if len(filtered_df) == len(self.df):
-            return None  # No filtering applied
-        
-        return filtered_df.index.tolist()
+        # Return indices only if filtering actually occurred
+        return filtered_df.index.tolist() if len(filtered_df) < original_size else None
 
     def get_similar_patients(self, patient_idx: int, top_k: int = 5) -> Tuple[List[int], List[float]]:
         """Find similar patients to a given patient"""
