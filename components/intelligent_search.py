@@ -201,28 +201,57 @@ def render_intelligent_search(data_processor, vector_search, llm_processor):
                                 ]
                                 st.dataframe(pd.DataFrame(risk_data), use_container_width=True, hide_index=True)
 
-                            # AI Analysis Results
-                            col1, col2 = st.columns(2)
+                            # AI Analysis Results in styled containers
+                            col1, col2, col3 = st.columns(3)
 
                             with col1:
-                                st.markdown("**Cohort Summary:**")
-                                st.write(
-                                    cohort_analysis.get(
-                                        "cohort_summary",
-                                        "No summary available"))
-
-                                st.markdown("**Key Characteristics:**")
-                                chars = cohort_analysis.get(
-                                    "key_characteristics", [])
-                                for char in chars:
-                                    st.markdown(f"• {char}")
+                                st.markdown("""
+                                <div style="background-color: #e8f4f8; padding: 1rem; border-radius: 8px; border-left: 4px solid #1f77b4;">
+                                    <h4 style="color: #1f77b4; margin: 0 0 0.5rem 0;">🔍 Key Insights</h4>
+                                """, unsafe_allow_html=True)
+                                
+                                cohort_summary = cohort_analysis.get("cohort_summary", "No summary available")
+                                st.write(cohort_summary)
+                                
+                                chars = cohort_analysis.get("key_characteristics", [])
+                                if chars:
+                                    st.markdown("**Key Characteristics:**")
+                                    for char in chars[:3]:
+                                        st.markdown(f"• {char}")
+                                
+                                st.markdown("</div>", unsafe_allow_html=True)
 
                             with col2:
-                                st.markdown("**Clinical Trial Suitability:**")
-                                st.write(
-                                    cohort_analysis.get(
-                                        "trial_suitability",
-                                        "No assessment available"))
+                                st.markdown("""
+                                <div style="background-color: #f3e8f8; padding: 1rem; border-radius: 8px; border-left: 4px solid #8e44ad;">
+                                    <h4 style="color: #8e44ad; margin: 0 0 0.5rem 0;">🧬 Clinical Significance</h4>
+                                """, unsafe_allow_html=True)
+                                
+                                trial_suitability = cohort_analysis.get("trial_suitability", "No assessment available")
+                                st.write(trial_suitability)
+                                
+                                research_opps = cohort_analysis.get("research_opportunities", [])
+                                if research_opps:
+                                    st.markdown("**Research Opportunities:**")
+                                    for opp in research_opps[:2]:
+                                        st.markdown(f"• {opp}")
+                                
+                                st.markdown("</div>", unsafe_allow_html=True)
+
+                            with col3:
+                                st.markdown("""
+                                <div style="background-color: #fff3cd; padding: 1rem; border-radius: 8px; border-left: 4px solid #ffc107;">
+                                    <h4 style="color: #d97706; margin: 0 0 0.5rem 0;">⚠️ Suggested Action (Caution: AI Generated)</h4>
+                                """, unsafe_allow_html=True)
+                                
+                                recommendations = cohort_analysis.get("recommendations", [])
+                                if recommendations:
+                                    for rec in recommendations[:3]:
+                                        st.markdown(f"• {rec}")
+                                else:
+                                    st.write("Consider further analysis of this patient cohort for potential research opportunities.")
+                                
+                                st.markdown("</div>", unsafe_allow_html=True)
 
                         # 2. MOVED: Relevant Patients Found section comes AFTER Cohort Analysis
                         st.markdown("---")

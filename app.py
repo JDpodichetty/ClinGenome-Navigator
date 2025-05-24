@@ -88,7 +88,27 @@ def main():
             st.rerun()
     
     else:
-        # Tab interface
+        # Tab interface with larger, more intuitive styling
+        st.markdown("""
+        <style>
+        .stTabs [data-baseweb="tab-list"] {
+            gap: 8px;
+        }
+        .stTabs [data-baseweb="tab"] {
+            height: 60px;
+            font-size: 18px !important;
+            font-weight: bold !important;
+            background-color: #f0f2f6;
+            border-radius: 8px 8px 0 0;
+            padding: 12px 24px;
+        }
+        .stTabs [aria-selected="true"] {
+            background-color: #1f77b4 !important;
+            color: white !important;
+        }
+        </style>
+        """, unsafe_allow_html=True)
+        
         tab1, tab2 = st.tabs(["🧠 Intelligent Search Hub", "📊 Data Exploration"])
         
         with tab1:
