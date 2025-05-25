@@ -215,7 +215,8 @@ class VectorSearch:
                     rf'(?:near|about|around|approximately)\s+{col_lower}\s*(\d+(?:\.\d+)?)',
                     rf'close\s+to.*?{col_lower}.*?(\d+(?:\.\d+)?)',
                     rf'value\s+of\s+{col_lower}\s+of\s*(\d+(?:\.\d+)?)',
-                    rf'{col_lower}\s+(?:close\s+to|near)\s*(\d+(?:\.\d+)?)'
+                    rf'{col_lower}\s+(?:close\s+to|near)\s*(\d+(?:\.\d+)?)',
+                    rf'around\s+the\s+{col_lower}\s+of\s+(\d+(?:\.\d+)?)'
                 ]
                 
                 # Check for matches and apply filters
@@ -283,105 +284,15 @@ class VectorSearch:
             if 'Ethnicity' in filtered_df.columns:
                 filtered_df = filtered_df[filtered_df['Ethnicity'] == 'Asian']
         
-        elif any(phrase in query_lower for phrase in ['egfr above', 'egfr over', 'egfr greater than', 'egfr >']):
-            if 'eGFR' in filtered_df.columns:
-                # Extract eGFR number from query
-                import re
-                egfr_match = re.search(r'egfr\s*(?:above|over|greater than|>)\s*(\d+)', query_lower)
-                if egfr_match:
-                    egfr_threshold = int(egfr_match.group(1))
-                    filtered_df = filtered_df[filtered_df['eGFR'] > egfr_threshold]
-        
-        elif any(phrase in query_lower for phrase in ['egfr near', 'egfr about', 'egfr around', 'egfr approximately', 'close to', 'value of egfr']):
-            if 'eGFR' in filtered_df.columns:
-                # Extract eGFR number from query and apply range filter (±5)
-                import re
-                # Multiple patterns to catch different phrasings
-                patterns = [
-                    r'egfr\s*(?:near|about|around|approximately)\s*(\d+)',
-                    r'close\s+to.*?egfr.*?(\d+)',
-                    r'value\s+of\s+egfr\s+of\s*(\d+)',
-                    r'egfr\s+(?:close\s+to|near)\s*(\d+)'
-                ]
-                
-                egfr_target = None
-                for pattern in patterns:
-                    egfr_match = re.search(pattern, query_lower)
-                    if egfr_match:
-                        egfr_target = int(egfr_match.group(1))
-                        break
-                
-                if egfr_target is not None:
-                    margin = 5  # ±5 range for "near" eGFR searches
-                    filtered_df = filtered_df[
-                        (filtered_df['eGFR'] >= egfr_target - margin) & 
-                        (filtered_df['eGFR'] <= egfr_target + margin)
-                    ]
-        
-        # Creatinine filtering with dynamic number extraction
-        elif any(phrase in query_lower for phrase in ['creatinine above', 'creatinine over', 'creatinine greater than', 'creatinine >']):
-            if 'Creatinine' in filtered_df.columns:
-                # Extract creatinine number from query
-                import re
-                creat_match = re.search(r'creatinine\s*(?:above|over|greater than|>)\s*(\d+(?:\.\d+)?)', query_lower)
-                if creat_match:
-                    creat_threshold = float(creat_match.group(1))
-                    filtered_df = filtered_df[filtered_df['Creatinine'] > creat_threshold]
-        
-        elif any(phrase in query_lower for phrase in ['creatinine below', 'creatinine under', 'creatinine less than', 'creatinine <']):
-            if 'Creatinine' in filtered_df.columns:
-                # Extract creatinine number from query
-                import re
-                creat_match = re.search(r'creatinine\s*(?:below|under|less than|<)\s*(\d+(?:\.\d+)?)', query_lower)
-                if creat_match:
-                    creat_threshold = float(creat_match.group(1))
-                    filtered_df = filtered_df[filtered_df['Creatinine'] < creat_threshold]
-        
-        elif any(phrase in query_lower for phrase in ['creatinine about', 'creatinine around', 'creatinine approximately', 'creatinine near', 'close to', 'value of creatinine']):
-            if 'Creatinine' in filtered_df.columns:
-                # Extract creatinine number from query and apply range filter (±0.2)
-                import re
-                # Multiple patterns to catch different phrasings
-                patterns = [
-                    r'creatinine\s*(?:about|around|approximately|near)\s*(\d+(?:\.\d+)?)',
-                    r'close\s+to.*?creatinine.*?(\d+(?:\.\d+)?)',
-                    r'value\s+of\s+creatinine\s+of\s*(\d+(?:\.\d+)?)',
-                    r'creatinine\s+(?:close\s+to|near)\s*(\d+(?:\.\d+)?)'
-                ]
-                
-                creat_target = None
-                for pattern in patterns:
-                    creat_match = re.search(pattern, query_lower)
-                    if creat_match:
-                        creat_target = float(creat_match.group(1))
-                        break
-                
-                if creat_target is not None:
-                    margin = 0.2  # ±0.2 range for "about" searches
-                    filtered_df = filtered_df[
-                        (filtered_df['Creatinine'] >= creat_target - margin) & 
-                        (filtered_df['Creatinine'] <= creat_target + margin)
-                    ]
-        
         # Trial eligibility
-        elif 'trial eligible' in query_lower or 'eligible for trial' in query_lower:
+        if 'trial eligible' in query_lower or 'eligible for trial' in query_lower:
             if 'Eligible_For_Trial' in filtered_df.columns:
                 filtered_df = filtered_df[filtered_df['Eligible_For_Trial'] == 'Yes']
         
         # Specific APOL1 variants
-        elif 'g2/g2' in query_lower:
+        if 'g2/g2' in query_lower:
             if 'APOL1_Variant' in filtered_df.columns:
                 filtered_df = filtered_df[filtered_df['APOL1_Variant'] == 'G2/G2']
-        
-        # Male patients
-        elif 'male patients' in query_lower and 'female' not in query_lower:
-            if 'Sex' in filtered_df.columns:
-                filtered_df = filtered_df[filtered_df['Sex'] == 'M']
-        
-        # Female patients  
-        elif 'female patients' in query_lower and 'male' not in query_lower:
-            if 'Sex' in filtered_df.columns:
-                filtered_df = filtered_df[filtered_df['Sex'] == 'F']
         
         # Return indices only if filtering actually occurred
         return filtered_df.index.tolist() if len(filtered_df) < original_size else None
