@@ -209,7 +209,6 @@ def render_intelligent_search(data_processor, vector_search, llm_processor):
                             
                             # Clinical Risk Stratification - moved to appear BEFORE colored boxes
                             st.markdown("#### Risk Stratification")
-                            st.markdown("*Based on eGFR levels (kidney function): Severe (<30), Moderate (30-59), Mild (≥60)*")
                             risk_data = []
                             if 'eGFR' in relevant_df.columns:
                                 severe_ckd = len(relevant_df[relevant_df['eGFR'] < 30])

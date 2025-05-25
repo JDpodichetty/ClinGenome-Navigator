@@ -300,6 +300,11 @@ def render_genetic_analysis(df):
     with col2:
         # APOL1 variant analysis
         if 'APOL1_Variant' in df.columns:
+            st.markdown("**APOL1 Risk Categories:**")
+            st.markdown("• **High Risk:** G1/G1, G1/G2, G2/G2 (kidney disease susceptibility)")
+            st.markdown("• **Intermediate Risk:** G0/G1, G0/G2 (one risk allele)")
+            st.markdown("• **Low Risk:** G0/G0 (reference, no risk alleles)")
+            
             apol1_counts = df['APOL1_Variant'].value_counts()
             
             # Define risk categories
