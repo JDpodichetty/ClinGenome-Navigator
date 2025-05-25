@@ -198,7 +198,9 @@ class VectorSearch:
                     rf'(?:above|over|greater than)\s+{col_lower}\s*(\d+(?:\.\d+)?)',
                     rf'{col_lower}\s+(?:above|over|greater than)\s*(\d+(?:\.\d+)?)',
                     rf'(?:above|over)\s+{col_lower}\s+(\d+(?:\.\d+)?)',
-                    rf'{col_lower}\s*>\s*(\d+(?:\.\d+)?)'
+                    rf'{col_lower}\s*>\s*(\d+(?:\.\d+)?)',
+                    rf'patients\s+over\s+(\d+(?:\.\d+)?)',
+                    rf'over\s+(\d+(?:\.\d+)?)'
                 ]
                 
                 # Below/less than patterns
@@ -294,6 +296,12 @@ class VectorSearch:
         if 'g2/g2' in query_lower:
             if 'APOL1_Variant' in filtered_df.columns:
                 filtered_df = filtered_df[filtered_df['APOL1_Variant'] == 'G2/G2']
+        elif 'g1 variant' in query_lower:
+            if 'APOL1_Variant' in filtered_df.columns:
+                filtered_df = filtered_df[filtered_df['APOL1_Variant'].str.contains('G1')]
+        elif 'g2 variant' in query_lower:
+            if 'APOL1_Variant' in filtered_df.columns:
+                filtered_df = filtered_df[filtered_df['APOL1_Variant'].str.contains('G2')]
         
         # Return indices only if filtering actually occurred
         return filtered_df.index.tolist() if len(filtered_df) < original_size else None
