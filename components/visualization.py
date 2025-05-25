@@ -617,6 +617,24 @@ def render_risk_stratification(df):
     
     st.subheader("⚠️ Risk Stratification Analysis")
     
+    # Risk calculation methodology explanation
+    st.markdown("""
+    #### 📋 Risk Score Methodology
+    
+    **How Risk Scores Are Calculated:**
+    
+    **Individual Risk Factors:**
+    - **eGFR Risk:** Low (≥60), Moderate (30-59), High (<30)
+    - **APOL1 Risk:** Low (G0/G0, G0/G1, G0/G2), High (G1/G1, G1/G2, G2/G2)
+    - **Age Risk:** Low (≤45), Moderate (46-65), High (>65)
+    
+    **Combined Risk Score:**
+    - High Risk = 3 points, Moderate Risk = 2 points, Low Risk = 1 point
+    - **Final Categories:** Very High (≥75% max score), High (≥67%), Moderate (≥50%), Low (<50%)
+    
+    ---
+    """)
+    
     # Define risk factors
     risk_factors = []
     
