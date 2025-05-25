@@ -58,7 +58,7 @@ def main():
     st.markdown("""
     <div style="background: linear-gradient(90deg, #1f77b4 0%, #2e8b57 100%); padding: 1rem; margin: -1rem -1rem 2rem -1rem; border-radius: 0; display: flex; justify-content: space-between; align-items: center;">
         <div>
-            <h1 style="color: white; margin: 0; font-size: 2.5rem; font-weight: bold;">🧬 ClinGenome Navigator</h1>
+            <h1 style="color: white; margin: 0; font-size: 2.5rem; font-weight: bold;">🧬 ClinGenome Navigator <span style="font-size: 1.2rem; font-weight: normal; color: #e6f3ff;">Demo</span></h1>
             <p style="color: #e6f3ff; margin: 0.5rem 0 0 0; font-size: 1.2rem;">GenAI based Clinico Genomics Research Platform</p>
         </div>
         <div style="display: flex; align-items: center; color: white;">
@@ -127,6 +127,15 @@ def main():
         
         with tab2:
             render_visualization(st.session_state.data_processor)
+    
+    # Copyright footer
+    st.markdown("---")
+    st.markdown(
+        "<div style='text-align: center; color: #666; font-size: 0.9rem; padding: 2rem 0;'>"
+        "© 2025 Jagdeep Podichetty"
+        "</div>", 
+        unsafe_allow_html=True
+    )
 
 if __name__ == "__main__":
     main()
