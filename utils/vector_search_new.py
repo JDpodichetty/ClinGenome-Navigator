@@ -288,7 +288,14 @@ class VectorSearch:
                 filtered_df = filtered_df[filtered_df['Ethnicity'] == 'Asian']
         
         # Trial eligibility
-        if 'trial eligible' in query_lower or 'eligible for trial' in query_lower:
+        if any(phrase in query_lower for phrase in [
+            'trial eligible', 
+            'eligible for trial', 
+            'eligible for trials', 
+            'eligible for clinical trials',
+            'research participants',
+            'study candidates'
+        ]):
             if 'Eligible_For_Trial' in filtered_df.columns:
                 filtered_df = filtered_df[filtered_df['Eligible_For_Trial'] == 'Yes']
         
