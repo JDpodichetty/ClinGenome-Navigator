@@ -185,15 +185,43 @@ class VectorSearch:
                 advanced_ckd = filtered_df['Diagnosis'].isin(['CKD Stage 4', 'CKD Stage 5'])
                 filtered_df = filtered_df[high_risk_apol1 | severe_kidney | advanced_ckd]
         
-        # Simple age filtering (exact phrase matching)
-        elif 'above age 32' in query_lower or 'over age 32' in query_lower:
+        # Age filtering with dynamic number extraction
+        elif any(phrase in query_lower for phrase in ['above age', 'over age', 'older than']):
             if 'Age' in filtered_df.columns:
-                filtered_df = filtered_df[filtered_df['Age'] > 32]
+                # Extract age number from query
+                import re
+                age_match = re.search(r'(?:above age|over age|older than)\s*(\d+)', query_lower)
+                if age_match:
+                    age_threshold = int(age_match.group(1))
+                    filtered_df = filtered_df[filtered_df['Age'] > age_threshold]
         
-        # Simple eGFR filtering (exact phrase matching)
-        elif any(phrase in query_lower for phrase in ['egfr below 30', 'egfr under 30', 'egfr less than 30', 'egfr < 30']):
+        elif any(phrase in query_lower for phrase in ['below age', 'under age', 'younger than']):
+            if 'Age' in filtered_df.columns:
+                # Extract age number from query
+                import re
+                age_match = re.search(r'(?:below age|under age|younger than)\s*(\d+)', query_lower)
+                if age_match:
+                    age_threshold = int(age_match.group(1))
+                    filtered_df = filtered_df[filtered_df['Age'] < age_threshold]
+        
+        # eGFR filtering with dynamic number extraction
+        elif any(phrase in query_lower for phrase in ['egfr below', 'egfr under', 'egfr less than', 'egfr <']):
             if 'eGFR' in filtered_df.columns:
-                filtered_df = filtered_df[filtered_df['eGFR'] < 30]
+                # Extract eGFR number from query
+                import re
+                egfr_match = re.search(r'egfr\s*(?:below|under|less than|<)\s*(\d+)', query_lower)
+                if egfr_match:
+                    egfr_threshold = int(egfr_match.group(1))
+                    filtered_df = filtered_df[filtered_df['eGFR'] < egfr_threshold]
+        
+        elif any(phrase in query_lower for phrase in ['egfr above', 'egfr over', 'egfr greater than', 'egfr >']):
+            if 'eGFR' in filtered_df.columns:
+                # Extract eGFR number from query
+                import re
+                egfr_match = re.search(r'egfr\s*(?:above|over|greater than|>)\s*(\d+)', query_lower)
+                if egfr_match:
+                    egfr_threshold = int(egfr_match.group(1))
+                    filtered_df = filtered_df[filtered_df['eGFR'] > egfr_threshold]
         
         # Trial eligibility
         elif 'trial eligible' in query_lower or 'eligible for trial' in query_lower:
