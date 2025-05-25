@@ -223,6 +223,25 @@ class VectorSearch:
                     egfr_threshold = int(egfr_match.group(1))
                     filtered_df = filtered_df[filtered_df['eGFR'] > egfr_threshold]
         
+        # Creatinine filtering with dynamic number extraction
+        elif any(phrase in query_lower for phrase in ['creatinine above', 'creatinine over', 'creatinine greater than', 'creatinine >']):
+            if 'Creatinine' in filtered_df.columns:
+                # Extract creatinine number from query
+                import re
+                creat_match = re.search(r'creatinine\s*(?:above|over|greater than|>)\s*(\d+(?:\.\d+)?)', query_lower)
+                if creat_match:
+                    creat_threshold = float(creat_match.group(1))
+                    filtered_df = filtered_df[filtered_df['Creatinine'] > creat_threshold]
+        
+        elif any(phrase in query_lower for phrase in ['creatinine below', 'creatinine under', 'creatinine less than', 'creatinine <']):
+            if 'Creatinine' in filtered_df.columns:
+                # Extract creatinine number from query
+                import re
+                creat_match = re.search(r'creatinine\s*(?:below|under|less than|<)\s*(\d+(?:\.\d+)?)', query_lower)
+                if creat_match:
+                    creat_threshold = float(creat_match.group(1))
+                    filtered_df = filtered_df[filtered_df['Creatinine'] < creat_threshold]
+        
         # Trial eligibility
         elif 'trial eligible' in query_lower or 'eligible for trial' in query_lower:
             if 'Eligible_For_Trial' in filtered_df.columns:
