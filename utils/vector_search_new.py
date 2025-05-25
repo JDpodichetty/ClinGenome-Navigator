@@ -299,8 +299,36 @@ class VectorSearch:
             if 'Eligible_For_Trial' in filtered_df.columns:
                 filtered_df = filtered_df[filtered_df['Eligible_For_Trial'] == 'Yes']
         
+        # Individual genetic mutations
+        if 'nphs1 mutations' in query_lower or 'nphs1 mutant' in query_lower:
+            if 'NPHS1' in filtered_df.columns:
+                filtered_df = filtered_df[filtered_df['NPHS1'] == 'Mut']
+        elif 'nphs2 mutations' in query_lower or 'nphs2 mutant' in query_lower:
+            if 'NPHS2' in filtered_df.columns:
+                filtered_df = filtered_df[filtered_df['NPHS2'] == 'Mut']
+        elif 'wt1 mutations' in query_lower or 'wt1 mutant' in query_lower:
+            if 'WT1' in filtered_df.columns:
+                filtered_df = filtered_df[filtered_df['WT1'] == 'Mut']
+        elif 'col4a3 mutations' in query_lower or 'col4a3 mutant' in query_lower:
+            if 'COL4A3' in filtered_df.columns:
+                filtered_df = filtered_df[filtered_df['COL4A3'] == 'Mut']
+        elif 'umod mutations' in query_lower or 'umod mutant' in query_lower:
+            if 'UMOD' in filtered_df.columns:
+                filtered_df = filtered_df[filtered_df['UMOD'] == 'Mut']
+        
+        # Combined genetic mutations
+        elif 'nphs2 and wt1 mutations' in query_lower:
+            if 'NPHS2' in filtered_df.columns and 'WT1' in filtered_df.columns:
+                filtered_df = filtered_df[(filtered_df['NPHS2'] == 'Mut') & (filtered_df['WT1'] == 'Mut')]
+        elif 'col4a3 and umod mutations' in query_lower:
+            if 'COL4A3' in filtered_df.columns and 'UMOD' in filtered_df.columns:
+                filtered_df = filtered_df[(filtered_df['COL4A3'] == 'Mut') & (filtered_df['UMOD'] == 'Mut')]
+        elif 'nphs1 and col4a3' in query_lower:
+            if 'NPHS1' in filtered_df.columns and 'COL4A3' in filtered_df.columns:
+                filtered_df = filtered_df[(filtered_df['NPHS1'] == 'Mut') & (filtered_df['COL4A3'] == 'Mut')]
+        
         # Specific APOL1 variants
-        if 'g2/g2' in query_lower:
+        elif 'g2/g2' in query_lower:
             if 'APOL1_Variant' in filtered_df.columns:
                 filtered_df = filtered_df[filtered_df['APOL1_Variant'] == 'G2/G2']
         elif 'g1 variant' in query_lower:
