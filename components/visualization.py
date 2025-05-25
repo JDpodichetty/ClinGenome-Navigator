@@ -36,11 +36,10 @@ def render_visualization(data_processor):
         return
     
     # Clean tabbed interface for different analyses
-    tab1, tab2, tab3, tab4 = st.tabs([
+    tab1, tab2, tab3 = st.tabs([
         "👥 Demographics", 
         "🧬 Genetic Analysis", 
-        "🏥 Clinical Metrics", 
-        "📈 Advanced Analytics"
+        "🏥 Clinical Metrics"
     ])
     
     with tab1:
@@ -51,33 +50,6 @@ def render_visualization(data_processor):
     
     with tab3:
         render_clinical_metrics_analysis(df)
-    
-    with tab4:
-        # Sub-tabs for advanced analytics
-        subtab1, subtab2, subtab3, subtab4 = st.tabs([
-            "🔗 Correlations", 
-            "📊 PCA Analysis", 
-            "⚠️ Risk Stratification", 
-            "💊 Treatment & Trials"
-        ])
-        
-        with subtab1:
-            render_correlation_analysis(df)
-        
-        with subtab2:
-            render_pca_analysis(df)
-        
-        with subtab3:
-            render_risk_stratification(df)
-        
-        with subtab4:
-            col1, col2 = st.columns(2)
-            with col1:
-                st.markdown("### 💊 Medication Analysis")
-                render_medication_analysis(df)
-            with col2:
-                st.markdown("### 🧪 Trial Eligibility")
-                render_trial_eligibility_analysis(df)
 
 def render_demographics_analysis(df):
     """Render demographics analysis visualizations"""
