@@ -242,13 +242,26 @@ class VectorSearch:
                     creat_threshold = float(creat_match.group(1))
                     filtered_df = filtered_df[filtered_df['Creatinine'] < creat_threshold]
         
-        elif any(phrase in query_lower for phrase in ['creatinine about', 'creatinine around', 'creatinine approximately', 'creatinine near']):
+        elif any(phrase in query_lower for phrase in ['creatinine about', 'creatinine around', 'creatinine approximately', 'creatinine near', 'close to', 'value of creatinine']):
             if 'Creatinine' in filtered_df.columns:
                 # Extract creatinine number from query and apply range filter (±0.2)
                 import re
-                creat_match = re.search(r'creatinine\s*(?:about|around|approximately|near)\s*(\d+(?:\.\d+)?)', query_lower)
-                if creat_match:
-                    creat_target = float(creat_match.group(1))
+                # Multiple patterns to catch different phrasings
+                patterns = [
+                    r'creatinine\s*(?:about|around|approximately|near)\s*(\d+(?:\.\d+)?)',
+                    r'close\s+to.*?creatinine.*?(\d+(?:\.\d+)?)',
+                    r'value\s+of\s+creatinine\s+of\s*(\d+(?:\.\d+)?)',
+                    r'creatinine\s+(?:close\s+to|near)\s*(\d+(?:\.\d+)?)'
+                ]
+                
+                creat_target = None
+                for pattern in patterns:
+                    creat_match = re.search(pattern, query_lower)
+                    if creat_match:
+                        creat_target = float(creat_match.group(1))
+                        break
+                
+                if creat_target is not None:
                     margin = 0.2  # ±0.2 range for "about" searches
                     filtered_df = filtered_df[
                         (filtered_df['Creatinine'] >= creat_target - margin) & 
