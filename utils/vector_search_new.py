@@ -242,6 +242,19 @@ class VectorSearch:
                     creat_threshold = float(creat_match.group(1))
                     filtered_df = filtered_df[filtered_df['Creatinine'] < creat_threshold]
         
+        elif any(phrase in query_lower for phrase in ['creatinine about', 'creatinine around', 'creatinine approximately', 'creatinine near']):
+            if 'Creatinine' in filtered_df.columns:
+                # Extract creatinine number from query and apply range filter (±0.2)
+                import re
+                creat_match = re.search(r'creatinine\s*(?:about|around|approximately|near)\s*(\d+(?:\.\d+)?)', query_lower)
+                if creat_match:
+                    creat_target = float(creat_match.group(1))
+                    margin = 0.2  # ±0.2 range for "about" searches
+                    filtered_df = filtered_df[
+                        (filtered_df['Creatinine'] >= creat_target - margin) & 
+                        (filtered_df['Creatinine'] <= creat_target + margin)
+                    ]
+        
         # Trial eligibility
         elif 'trial eligible' in query_lower or 'eligible for trial' in query_lower:
             if 'Eligible_For_Trial' in filtered_df.columns:
