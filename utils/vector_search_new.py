@@ -223,6 +223,32 @@ class VectorSearch:
                     egfr_threshold = int(egfr_match.group(1))
                     filtered_df = filtered_df[filtered_df['eGFR'] > egfr_threshold]
         
+        elif any(phrase in query_lower for phrase in ['egfr near', 'egfr about', 'egfr around', 'egfr approximately', 'close to', 'value of egfr']):
+            if 'eGFR' in filtered_df.columns:
+                # Extract eGFR number from query and apply range filter (±5)
+                import re
+                # Multiple patterns to catch different phrasings
+                patterns = [
+                    r'egfr\s*(?:near|about|around|approximately)\s*(\d+)',
+                    r'close\s+to.*?egfr.*?(\d+)',
+                    r'value\s+of\s+egfr\s+of\s*(\d+)',
+                    r'egfr\s+(?:close\s+to|near)\s*(\d+)'
+                ]
+                
+                egfr_target = None
+                for pattern in patterns:
+                    egfr_match = re.search(pattern, query_lower)
+                    if egfr_match:
+                        egfr_target = int(egfr_match.group(1))
+                        break
+                
+                if egfr_target is not None:
+                    margin = 5  # ±5 range for "near" eGFR searches
+                    filtered_df = filtered_df[
+                        (filtered_df['eGFR'] >= egfr_target - margin) & 
+                        (filtered_df['eGFR'] <= egfr_target + margin)
+                    ]
+        
         # Creatinine filtering with dynamic number extraction
         elif any(phrase in query_lower for phrase in ['creatinine above', 'creatinine over', 'creatinine greater than', 'creatinine >']):
             if 'Creatinine' in filtered_df.columns:
