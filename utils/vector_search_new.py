@@ -206,7 +206,8 @@ class VectorSearch:
                     rf'(?:below|under|less than)\s+{col_lower}\s*(\d+(?:\.\d+)?)',
                     rf'{col_lower}\s+(?:below|under|less than)\s*(\d+(?:\.\d+)?)',
                     rf'(?:below|under)\s+{col_lower}\s+(\d+(?:\.\d+)?)',
-                    rf'{col_lower}\s*<\s*(\d+(?:\.\d+)?)'
+                    rf'{col_lower}\s*<\s*(\d+(?:\.\d+)?)',
+                    rf'below\s+the\s+{col_lower}\s+of\s+(\d+(?:\.\d+)?)'
                 ]
                 
                 # Near/about patterns
