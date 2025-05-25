@@ -293,6 +293,8 @@ class VectorSearch:
             'eligible for trial', 
             'eligible for trials', 
             'eligible for clinical trials',
+            'eligible for nephropathy trials',
+            'eligible for precision medicine trials',
             'research participants',
             'study candidates'
         ]):
@@ -323,9 +325,35 @@ class VectorSearch:
         elif 'col4a3 and umod mutations' in query_lower:
             if 'COL4A3' in filtered_df.columns and 'UMOD' in filtered_df.columns:
                 filtered_df = filtered_df[(filtered_df['COL4A3'] == 'Mut') & (filtered_df['UMOD'] == 'Mut')]
-        elif 'nphs1 and col4a3' in query_lower:
+        elif 'nphs1 and col4a3' in query_lower or 'nphs1 and col4a3 double mutants' in query_lower:
             if 'NPHS1' in filtered_df.columns and 'COL4A3' in filtered_df.columns:
                 filtered_df = filtered_df[(filtered_df['NPHS1'] == 'Mut') & (filtered_df['COL4A3'] == 'Mut')]
+        
+        # Special genetic patterns
+        elif 'wt1 mutations only' in query_lower:
+            # WT1 mutant but all others wild type
+            if all(col in filtered_df.columns for col in ['WT1', 'NPHS1', 'NPHS2', 'COL4A3', 'UMOD']):
+                filtered_df = filtered_df[(filtered_df['WT1'] == 'Mut') & 
+                                        (filtered_df['NPHS1'] == 'WT') & 
+                                        (filtered_df['NPHS2'] == 'WT') & 
+                                        (filtered_df['COL4A3'] == 'WT') & 
+                                        (filtered_df['UMOD'] == 'WT')]
+        elif 'no gene mutations' in query_lower or 'no mutations' in query_lower:
+            # All genes wild type
+            if all(col in filtered_df.columns for col in ['WT1', 'NPHS1', 'NPHS2', 'COL4A3', 'UMOD']):
+                filtered_df = filtered_df[(filtered_df['WT1'] == 'WT') & 
+                                        (filtered_df['NPHS1'] == 'WT') & 
+                                        (filtered_df['NPHS2'] == 'WT') & 
+                                        (filtered_df['COL4A3'] == 'WT') & 
+                                        (filtered_df['UMOD'] == 'WT')]
+        elif 'at least one gene mutation' in query_lower or 'at least one mutation' in query_lower:
+            # Any gene mutant
+            if all(col in filtered_df.columns for col in ['WT1', 'NPHS1', 'NPHS2', 'COL4A3', 'UMOD']):
+                filtered_df = filtered_df[(filtered_df['WT1'] == 'Mut') | 
+                                        (filtered_df['NPHS1'] == 'Mut') | 
+                                        (filtered_df['NPHS2'] == 'Mut') | 
+                                        (filtered_df['COL4A3'] == 'Mut') | 
+                                        (filtered_df['UMOD'] == 'Mut')]
         
         # Specific APOL1 variants
         elif 'g2/g2' in query_lower:
