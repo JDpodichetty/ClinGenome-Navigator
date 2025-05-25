@@ -266,10 +266,10 @@ class VectorSearch:
         # Sex filtering
         if 'male' in query_lower and 'female' not in query_lower:
             if 'Sex' in filtered_df.columns:
-                filtered_df = filtered_df[filtered_df['Sex'] == 'Male']
+                filtered_df = filtered_df[filtered_df['Sex'] == 'M']
         elif 'female' in query_lower and 'male' not in query_lower:
             if 'Sex' in filtered_df.columns:
-                filtered_df = filtered_df[filtered_df['Sex'] == 'Female']
+                filtered_df = filtered_df[filtered_df['Sex'] == 'F']
         
         # Ethnicity filtering
         if 'caucasian' in query_lower or 'white' in query_lower:
