@@ -185,34 +185,103 @@ class VectorSearch:
                 advanced_ckd = filtered_df['Diagnosis'].isin(['CKD Stage 4', 'CKD Stage 5'])
                 filtered_df = filtered_df[high_risk_apol1 | severe_kidney | advanced_ckd]
         
-        # Age filtering with dynamic number extraction
-        elif any(phrase in query_lower for phrase in ['above age', 'over age', 'older than']):
-            if 'Age' in filtered_df.columns:
-                # Extract age number from query
-                import re
-                age_match = re.search(r'(?:above age|over age|older than)\s*(\d+)', query_lower)
-                if age_match:
-                    age_threshold = int(age_match.group(1))
-                    filtered_df = filtered_df[filtered_df['Age'] > age_threshold]
+        # Universal numerical filtering system
+        import re
+        numerical_cols = {'Age': 2, 'eGFR': 5, 'Creatinine': 0.2}  # column: margin for approximate searches
         
-        elif any(phrase in query_lower for phrase in ['below age', 'under age', 'younger than']):
-            if 'Age' in filtered_df.columns:
-                # Extract age number from query
-                import re
-                age_match = re.search(r'(?:below age|under age|younger than)\s*(\d+)', query_lower)
-                if age_match:
-                    age_threshold = int(age_match.group(1))
-                    filtered_df = filtered_df[filtered_df['Age'] < age_threshold]
+        for col_name, margin in numerical_cols.items():
+            if col_name in filtered_df.columns:
+                col_lower = col_name.lower()
+                
+                # Above/greater than patterns
+                above_patterns = [
+                    rf'(?:above|over|greater than)\s+{col_lower}\s*(\d+(?:\.\d+)?)',
+                    rf'{col_lower}\s+(?:above|over|greater than)\s*(\d+(?:\.\d+)?)',
+                    rf'(?:above|over)\s+{col_lower}\s+(\d+(?:\.\d+)?)',
+                    rf'{col_lower}\s*>\s*(\d+(?:\.\d+)?)'
+                ]
+                
+                # Below/less than patterns
+                below_patterns = [
+                    rf'(?:below|under|less than)\s+{col_lower}\s*(\d+(?:\.\d+)?)',
+                    rf'{col_lower}\s+(?:below|under|less than)\s*(\d+(?:\.\d+)?)',
+                    rf'(?:below|under)\s+{col_lower}\s+(\d+(?:\.\d+)?)',
+                    rf'{col_lower}\s*<\s*(\d+(?:\.\d+)?)'
+                ]
+                
+                # Near/about patterns
+                near_patterns = [
+                    rf'{col_lower}\s*(?:near|about|around|approximately)\s*(\d+(?:\.\d+)?)',
+                    rf'(?:near|about|around|approximately)\s+{col_lower}\s*(\d+(?:\.\d+)?)',
+                    rf'close\s+to.*?{col_lower}.*?(\d+(?:\.\d+)?)',
+                    rf'value\s+of\s+{col_lower}\s+of\s*(\d+(?:\.\d+)?)',
+                    rf'{col_lower}\s+(?:close\s+to|near)\s*(\d+(?:\.\d+)?)'
+                ]
+                
+                # Check for matches and apply filters
+                threshold = None
+                filter_type = None
+                
+                # Check above patterns
+                for pattern in above_patterns:
+                    match = re.search(pattern, query_lower)
+                    if match:
+                        threshold = float(match.group(1))
+                        filter_type = 'above'
+                        break
+                
+                # Check below patterns if no above match
+                if not threshold:
+                    for pattern in below_patterns:
+                        match = re.search(pattern, query_lower)
+                        if match:
+                            threshold = float(match.group(1))
+                            filter_type = 'below'
+                            break
+                
+                # Check near patterns if no above/below match
+                if not threshold:
+                    for pattern in near_patterns:
+                        match = re.search(pattern, query_lower)
+                        if match:
+                            threshold = float(match.group(1))
+                            filter_type = 'near'
+                            break
+                
+                # Apply the appropriate filter
+                if threshold is not None:
+                    if filter_type == 'above':
+                        filtered_df = filtered_df[filtered_df[col_name] > threshold]
+                    elif filter_type == 'below':
+                        filtered_df = filtered_df[filtered_df[col_name] < threshold]
+                    elif filter_type == 'near':
+                        filtered_df = filtered_df[
+                            (filtered_df[col_name] >= threshold - margin) & 
+                            (filtered_df[col_name] <= threshold + margin)
+                        ]
+                    break  # Exit loop once a filter is applied
         
-        # eGFR filtering with dynamic number extraction
-        elif any(phrase in query_lower for phrase in ['egfr below', 'egfr under', 'egfr less than', 'egfr <']):
-            if 'eGFR' in filtered_df.columns:
-                # Extract eGFR number from query
-                import re
-                egfr_match = re.search(r'egfr\s*(?:below|under|less than|<)\s*(\d+)', query_lower)
-                if egfr_match:
-                    egfr_threshold = int(egfr_match.group(1))
-                    filtered_df = filtered_df[filtered_df['eGFR'] < egfr_threshold]
+        # Sex filtering
+        if 'male' in query_lower and 'female' not in query_lower:
+            if 'Sex' in filtered_df.columns:
+                filtered_df = filtered_df[filtered_df['Sex'] == 'Male']
+        elif 'female' in query_lower and 'male' not in query_lower:
+            if 'Sex' in filtered_df.columns:
+                filtered_df = filtered_df[filtered_df['Sex'] == 'Female']
+        
+        # Ethnicity filtering
+        if 'caucasian' in query_lower or 'white' in query_lower:
+            if 'Ethnicity' in filtered_df.columns:
+                filtered_df = filtered_df[filtered_df['Ethnicity'] == 'Caucasian']
+        elif 'african american' in query_lower or 'black' in query_lower:
+            if 'Ethnicity' in filtered_df.columns:
+                filtered_df = filtered_df[filtered_df['Ethnicity'] == 'African American']
+        elif 'hispanic' in query_lower or 'latino' in query_lower:
+            if 'Ethnicity' in filtered_df.columns:
+                filtered_df = filtered_df[filtered_df['Ethnicity'] == 'Hispanic']
+        elif 'asian' in query_lower:
+            if 'Ethnicity' in filtered_df.columns:
+                filtered_df = filtered_df[filtered_df['Ethnicity'] == 'Asian']
         
         elif any(phrase in query_lower for phrase in ['egfr above', 'egfr over', 'egfr greater than', 'egfr >']):
             if 'eGFR' in filtered_df.columns:
