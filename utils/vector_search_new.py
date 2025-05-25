@@ -274,7 +274,16 @@ class VectorSearch:
                 filtered_df = filtered_df[filtered_df['Sex'] == 'M']
         
         # Complex multi-criteria patterns first
-        if 'asian patients with ckd and' in query_lower and 'g0/g1' in query_lower:
+        if 'asian female patients with ckd and' in query_lower and 'g0/g1' in query_lower:
+            # Asian + Female + CKD + G0/G1 combination
+            if all(col in filtered_df.columns for col in ['Ethnicity', 'Sex', 'Diagnosis', 'APOL1_Variant']):
+                filtered_df = filtered_df[
+                    (filtered_df['Ethnicity'] == 'Asian') & 
+                    (filtered_df['Sex'] == 'F') &
+                    (filtered_df['Diagnosis'].str.contains('CKD', case=False, na=False)) &
+                    (filtered_df['APOL1_Variant'] == 'G0/G1')
+                ]
+        elif 'asian patients with ckd and' in query_lower and 'g0/g1' in query_lower:
             # Asian + CKD + G0/G1 combination
             if all(col in filtered_df.columns for col in ['Ethnicity', 'Diagnosis', 'APOL1_Variant']):
                 filtered_df = filtered_df[
