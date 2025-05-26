@@ -4,6 +4,7 @@ from typing import List, Tuple, Dict, Optional
 import re
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
+from .query_normalizer import QueryNormalizer
 
 class VectorSearch:
     """Handles semantic search using TF-IDF vectorization for accurate clinical data search"""
@@ -22,6 +23,7 @@ class VectorSearch:
         self.tfidf_matrix = None
         self.texts = None
         self.df = None
+        self.query_normalizer = QueryNormalizer()
 
     def build_index(self, df: pd.DataFrame, texts: Optional[List[str]] = None):
         """Build search index from the provided data"""
@@ -134,7 +136,22 @@ class VectorSearch:
         if self.tfidf_matrix is None:
             raise ValueError("Index not built. Call build_index() first.")
         
-        # Apply numerical filters first
+        # First try systematic query normalization
+        normalized = self.query_normalizer.normalize_query(query)
+        
+        # If we have normalized components, use them for precise filtering
+        if any([normalized['ranges'], normalized['comparisons'], normalized['conditions']]):
+            try:
+                import pandas as pd
+                filtered_df = self.query_normalizer.build_filter_from_normalized(normalized, self.df)
+                if len(filtered_df) < len(self.df):
+                    # Return indices of filtered results
+                    filtered_indices = filtered_df.index.tolist()
+                    return filtered_indices, [1.0] * len(filtered_indices)
+            except Exception:
+                pass  # Fall back to existing pattern matching
+        
+        # Apply numerical filters first (existing approach)
         filtered_indices = self._apply_numerical_filters(query)
         
         if filtered_indices is not None and len(filtered_indices) == 0:
