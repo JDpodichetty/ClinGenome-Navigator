@@ -445,25 +445,24 @@ class VectorSearch:
             if 'Diagnosis' in filtered_df.columns:
                 filtered_df = filtered_df[filtered_df['Diagnosis'] == 'CKD Stage 3']
         
-        # Age range patterns  
-        elif 'aged 30–40' in query_lower or 'aged 30-40' in query_lower:
+        # Flexible age range patterns using regex
+        elif 'aged' in query_lower and ('-' in query_lower or '–' in query_lower):
+            import re
             if 'Age' in filtered_df.columns:
-                age_filtered = filtered_df[(filtered_df['Age'] >= 30) & (filtered_df['Age'] <= 40)]
-                if 'gene mutations' in query_lower:
-                    gene_cols = ['WT1', 'NPHS1', 'NPHS2', 'COL4A3', 'UMOD']
-                    has_mutation = (age_filtered[gene_cols] == 'Mut').any(axis=1)
-                    filtered_df = age_filtered[has_mutation]
-                else:
-                    filtered_df = age_filtered
-        elif 'aged 40-50' in query_lower or 'aged 40–50' in query_lower:
-            if 'Age' in filtered_df.columns:
-                age_filtered = filtered_df[(filtered_df['Age'] >= 40) & (filtered_df['Age'] <= 50)]
-                if 'gene mutations' in query_lower:
-                    gene_cols = ['WT1', 'NPHS1', 'NPHS2', 'COL4A3', 'UMOD']
-                    has_mutation = (age_filtered[gene_cols] == 'Mut').any(axis=1)
-                    filtered_df = age_filtered[has_mutation]
-                else:
-                    filtered_df = age_filtered
+                # Extract age range using regex
+                age_pattern = r'aged\s+(\d+)[-–](\d+)'
+                match = re.search(age_pattern, query_lower)
+                if match:
+                    min_age = int(match.group(1))
+                    max_age = int(match.group(2))
+                    age_filtered = filtered_df[(filtered_df['Age'] >= min_age) & (filtered_df['Age'] <= max_age)]
+                    
+                    if 'gene mutations' in query_lower:
+                        gene_cols = ['WT1', 'NPHS1', 'NPHS2', 'COL4A3', 'UMOD']
+                        has_mutation = (age_filtered[gene_cols] == 'Mut').any(axis=1)
+                        filtered_df = age_filtered[has_mutation]
+                    else:
+                        filtered_df = age_filtered
         
         # Specific APOL1 variants (legacy patterns)
         elif 'g2/g2' in query_lower:
