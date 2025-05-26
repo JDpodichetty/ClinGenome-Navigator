@@ -445,6 +445,50 @@ class VectorSearch:
             if 'Diagnosis' in filtered_df.columns:
                 filtered_df = filtered_df[filtered_df['Diagnosis'] == 'CKD Stage 3']
         
+        # APOL1 mutation patterns
+        elif 'apol1 mutations' in query_lower or 'patients with apol1' in query_lower:
+            if 'APOL1_Variant' in filtered_df.columns:
+                # APOL1 mutations = any variant except G0/G0 (wild-type)
+                apol1_filtered = filtered_df[filtered_df['APOL1_Variant'] != 'G0/G0']
+                
+                # Check for kidney dysfunction combination
+                if any(term in query_lower for term in ['kidney dysfunction', 'kidney disease', 'renal dysfunction']):
+                    # Kidney dysfunction = CKD stages or low eGFR or high creatinine
+                    kidney_dysfunction = (
+                        (filtered_df['Diagnosis'].str.contains('CKD', na=False)) |
+                        (filtered_df['eGFR'] < 60) |
+                        (filtered_df['Creatinine'] > 1.5)
+                    )
+                    filtered_df = apol1_filtered[kidney_dysfunction]
+                else:
+                    filtered_df = apol1_filtered
+        
+        # Kidney dysfunction patterns
+        elif any(term in query_lower for term in ['kidney dysfunction', 'kidney disease', 'renal dysfunction', 'kidney failure']):
+            # Kidney dysfunction = CKD stages, low eGFR, or high creatinine
+            kidney_dysfunction = (
+                (filtered_df['Diagnosis'].str.contains('CKD', na=False)) |
+                (filtered_df['eGFR'] < 60) |
+                (filtered_df['Creatinine'] > 1.5)
+            )
+            filtered_df = filtered_df[kidney_dysfunction]
+        
+        # Wild-type APOL1 pattern
+        elif 'wild-type apol1' in query_lower or 'wildtype apol1' in query_lower:
+            if 'APOL1_Variant' in filtered_df.columns:
+                filtered_df = filtered_df[filtered_df['APOL1_Variant'] == 'G0/G0']
+        
+        # Clinical condition patterns
+        elif 'diabetic nephropathy' in query_lower:
+            if 'Diagnosis' in filtered_df.columns:
+                filtered_df = filtered_df[filtered_df['Diagnosis'] == 'Diabetic Nephropathy']
+        elif 'nephrotic syndrome' in query_lower:
+            if 'Diagnosis' in filtered_df.columns:
+                filtered_df = filtered_df[filtered_df['Diagnosis'] == 'Nephrotic Syndrome']
+        elif 'glomerulonephritis' in query_lower:
+            if 'Diagnosis' in filtered_df.columns:
+                filtered_df = filtered_df[filtered_df['Diagnosis'].str.contains('glomerulonephritis', case=False, na=False)]
+
         # Dynamic numerical range patterns
         elif any(range_indicator in query_lower for range_indicator in ['aged', 'egfr', 'creatinine']):
             import re
