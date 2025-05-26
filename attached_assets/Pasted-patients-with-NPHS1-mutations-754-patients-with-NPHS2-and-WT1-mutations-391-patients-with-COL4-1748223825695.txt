@@ -1,0 +1,225 @@
+patients with NPHS1 mutations → 754
+
+patients with NPHS2 and WT1 mutations → 391
+
+patients with COL4A3 and UMOD mutations → 378
+
+APOL1 G1/G1 patients with CKD → 161
+
+patients with G1/G2 APOL1 and high creatinine → 254
+
+patients with wild-type APOL1 → 770
+
+patients with APOL1 mutations and eGFR below 60 → 339
+
+NPHS1 and COL4A3 double mutants → 389
+
+APOL1 wild-type but NPHS2 mutant → 390
+
+patients with triple gene mutations → 431
+
+patients with G0/G1 APOL1 and stage 4 CKD → 41
+
+patients with G1/G1 genotype and nephrotic syndrome → 40
+
+patients with WT1 mutations only → 30
+
+patients with G0/G0 and normal kidney function → 66
+
+patients with UMOD mutations and high creatinine → 633
+
+patients with G1 carriers and eligible for trials → 886
+
+patients with no gene mutations → 27
+
+patients with at least one gene mutation → 1,473
+
+patients with APOL1 and WT1 mutations → 356
+
+patients with any two gene mutations → 343
+
+Would you like me to proceed with cohort sizes for the next segments (diagnosis, lab, demographics, etc.) from the 100-query set? 
+
+
+
+
+
+
+You said:
+yes
+
+
+ChatGPT said:
+Here are the cohort sizes for the 20 diagnosis and clinical condition queries:
+
+patients diagnosed with CKD Stage 3 → 201
+
+patients with diabetic nephropathy → 226
+
+patients with nephrotic syndrome → 217
+
+patients with both CKD and nephrotic syndrome → 0
+
+patients with glomerulonephritis → 0
+
+patients with high eGFR but CKD diagnosis → 225
+
+patients with low eGFR and no CKD diagnosis → 310
+
+CKD Stage 4 patients with proteinuria → 28
+
+patients on Erythropoietin → 413
+
+patients with reduced kidney function and diabetes → 103
+
+patients prescribed ACE Inhibitors → 440
+
+patients using Calcium Channel Blockers → 478
+
+patients taking Diuretics and Statins → 94
+
+patients with severe CKD on multiple medications → 0
+
+patients with diabetic nephropathy and G1/G1 → 51
+
+patients with CKD and WT1 mutations → 409
+
+patients with nephrotic syndrome and trial eligibility → 214
+
+CKD Stage 5 patients → 0
+
+patients referred to nephrology → 221
+
+patients with persistent swelling symptoms → 204
+
+Next, I’ll compute cohort sizes for the Laboratory Data Queries (41–60). 
+
+Here are the cohort sizes for the 20 laboratory data-related queries:
+
+patients with creatinine above 3.0 → 707
+
+patients with eGFR below 45 → 484
+
+patients with creatinine between 2 and 3 → 325
+
+patients with eGFR between 60 and 90 → 414
+
+patients with normal creatinine but low eGFR → 91
+
+patients with abnormal eGFR trends → 0
+
+patients with stable creatinine levels → 0
+
+patients with creatinine below 1.2 → 213
+
+patients with eGFR over 100 → 281
+
+patients with elevated creatinine and stage 3 CKD → 174
+
+patients with creatinine above 4 → 342
+
+patients with sudden eGFR decline → 0
+
+patients with CKD but normal creatinine → 105
+
+patients with abnormal kidney labs but asymptomatic → 0
+
+patients with low eGFR and high APOL1 risk → 266
+
+patients with both abnormal creatinine and proteinuria → 178
+
+patients with eGFR under 30 but trial eligible → 271
+
+patients with eGFR greater than 120 → 0
+
+patients with fluctuating creatinine readings → 0
+
+patients with CKD and albuminuria → 0
+
+Next, I’ll calculate cohort sizes for the Demographics & Ethnicity Queries (61–80). 
+
+Here are the cohort sizes for the 20 demographics and ethnicity-related queries:
+
+African American patients with APOL1 variants → 163
+
+Hispanic females with CKD → 90
+
+Asian males with nephrotic syndrome → 20
+
+Caucasian patients with stage 4 CKD → 40
+
+young male patients with gene mutations → 263
+
+elderly female patients with normal kidney function → 65
+
+patients over 60 with low eGFR → 266
+
+patients under 30 with nephrotic syndrome → 40
+
+middle-aged patients with CKD and high creatinine → 189
+
+patients aged 50-70 with APOL1 G1/G2 → 94
+
+minority patients with trial eligibility → 890
+
+female patients with diabetic nephropathy → 102
+
+African American females with G1/G1 → 30
+
+patients of Hispanic ethnicity with G0/G1 genotype → 49
+
+elderly Caucasians with stage 3 CKD → 16
+
+young adults with early kidney disease signs → 81
+
+male patients on ACE Inhibitors → 224
+
+female patients on Erythropoietin → 208
+
+elderly patients with severe gene mutation profiles → 336
+
+urban ethnicity representation in CKD patients → 497
+
+Next, I’ll calculate cohort sizes for the Clinical Trial & Risk Stratification Queries (81–100). 
+
+Here are the cohort sizes for the 20 clinical trial and risk stratification queries:
+
+trial eligible patients with G1/G1 → 297
+
+patients not eligible for trials → 15
+
+high-risk CKD patients eligible for trials → 591
+
+low-risk patients with no gene mutations → 12
+
+patients with G1/G2 but normal kidney function → 77
+
+trial candidates with nephrotic syndrome → 214
+
+patients with diabetic nephropathy and G2 variant → 84
+
+patients with eGFR decline but trial eligible → 0
+
+APOL1 carriers not eligible for clinical trials → 0
+
+patients eligible for nephropathy trials → 225
+
+female patients eligible for genetic trials → 749
+
+patients eligible for precision medicine trials → 1,473
+
+trial-eligible young patients with gene mutations → 263
+
+patients with rare gene profiles in trial cohort → 746
+
+patients with both clinical and genetic risk factors → 667
+
+CKD patients disqualified from trials due to age → 1
+
+patients who improved on clinical trial medications → 0
+
+patients with stable CKD and trial eligibility → 0
+
+high-risk genotypes in clinical trial population → 900
+
+trial ineligible patients with severe kidney damage → 0
