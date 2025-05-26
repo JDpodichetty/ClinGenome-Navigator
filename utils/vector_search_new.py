@@ -445,17 +445,17 @@ class VectorSearch:
             if 'Diagnosis' in filtered_df.columns:
                 filtered_df = filtered_df[filtered_df['Diagnosis'] == 'CKD Stage 3']
         
-        # Flexible age range patterns using regex
-        elif 'aged' in query_lower and ('-' in query_lower or '–' in query_lower):
+        # Dynamic numerical range patterns
+        elif any(range_indicator in query_lower for range_indicator in ['aged', 'egfr', 'creatinine']):
             import re
-            if 'Age' in filtered_df.columns:
-                # Extract age range using regex
+            
+            # Age ranges
+            if 'aged' in query_lower and 'Age' in filtered_df.columns:
                 age_pattern = r'aged\s+(\d+)[-–](\d+)'
                 match = re.search(age_pattern, query_lower)
                 if match:
-                    min_age = int(match.group(1))
-                    max_age = int(match.group(2))
-                    age_filtered = filtered_df[(filtered_df['Age'] >= min_age) & (filtered_df['Age'] <= max_age)]
+                    min_val, max_val = int(match.group(1)), int(match.group(2))
+                    age_filtered = filtered_df[(filtered_df['Age'] >= min_val) & (filtered_df['Age'] <= max_val)]
                     
                     if 'gene mutations' in query_lower:
                         gene_cols = ['WT1', 'NPHS1', 'NPHS2', 'COL4A3', 'UMOD']
@@ -463,6 +463,33 @@ class VectorSearch:
                         filtered_df = age_filtered[has_mutation]
                     else:
                         filtered_df = age_filtered
+            
+            # eGFR ranges  
+            elif 'egfr' in query_lower and 'eGFR' in filtered_df.columns:
+                egfr_pattern = r'egfr\s+(?:between\s+)?(\d+)[-–](\d+)'
+                match = re.search(egfr_pattern, query_lower)
+                if match:
+                    min_val, max_val = int(match.group(1)), int(match.group(2))
+                    egfr_filtered = filtered_df[(filtered_df['eGFR'] >= min_val) & (filtered_df['eGFR'] <= max_val)]
+                    
+                    # Check for additional conditions
+                    if 'ckd stage' in query_lower:
+                        stage_match = re.search(r'ckd stage (\d+)', query_lower)
+                        if stage_match:
+                            stage = stage_match.group(1)
+                            filtered_df = egfr_filtered[egfr_filtered['Diagnosis'] == f'CKD Stage {stage}']
+                        else:
+                            filtered_df = egfr_filtered
+                    else:
+                        filtered_df = egfr_filtered
+            
+            # Creatinine ranges
+            elif 'creatinine' in query_lower and 'Creatinine' in filtered_df.columns:
+                creat_pattern = r'creatinine\s+(?:between\s+)?(\d+(?:\.\d+)?)[-–](\d+(?:\.\d+)?)'
+                match = re.search(creat_pattern, query_lower)
+                if match:
+                    min_val, max_val = float(match.group(1)), float(match.group(2))
+                    filtered_df = filtered_df[(filtered_df['Creatinine'] >= min_val) & (filtered_df['Creatinine'] <= max_val)]
         
         # Specific APOL1 variants (legacy patterns)
         elif 'g2/g2' in query_lower:
