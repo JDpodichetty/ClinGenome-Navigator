@@ -510,7 +510,8 @@ class VectorSearch:
             
             # eGFR ranges  
             elif 'egfr' in query_lower and 'eGFR' in filtered_df.columns:
-                egfr_pattern = r'egfr\s+(?:between\s+)?(\d+)[-–](\d+)'
+                # Handle both "eGFR 60-90" and "eGFR between 60 and 90"
+                egfr_pattern = r'egfr\s+(?:between\s+)?(\d+)(?:[-–]\s*|(?:\s+and\s+))(\d+)'
                 match = re.search(egfr_pattern, query_lower)
                 if match:
                     min_val, max_val = int(match.group(1)), int(match.group(2))
@@ -529,7 +530,8 @@ class VectorSearch:
             
             # Creatinine ranges
             elif 'creatinine' in query_lower and 'Creatinine' in filtered_df.columns:
-                creat_pattern = r'creatinine\s+(?:between\s+)?(\d+(?:\.\d+)?)[-–](\d+(?:\.\d+)?)'
+                # Handle both "creatinine 2-3" and "creatinine between 2 and 3"
+                creat_pattern = r'creatinine\s+(?:between\s+)?(\d+(?:\.\d+)?)(?:[-–]\s*|(?:\s+and\s+))(\d+(?:\.\d+)?)'
                 match = re.search(creat_pattern, query_lower)
                 if match:
                     min_val, max_val = float(match.group(1)), float(match.group(2))
