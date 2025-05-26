@@ -1,0 +1,206 @@
+🧬 Genetic Mutation Queries (1–15)
+patients with NPHS1 and UMOD mutations
+
+patients with WT APOL1 and WT1 mutations
+
+patients with NPHS2 and COL4A3 mutations
+
+patients with compound heterozygosity in APOL1
+
+patients carrying G0/G0 genotype only
+
+patients with COL4A3 mutation and proteinuria
+
+patients with WT1 mutation but no CKD
+
+patients with mutations in at least two genes
+
+patients with mutated NPHS1 and WT in all others
+
+patients with multiple WT genotypes and CKD
+
+patients with UMOD mutations and normal creatinine
+
+APOL1 wild-type patients with CKD Stage 4
+
+patients with triple-gene mutation combinations
+
+patients with no known genetic variants
+
+patients with WT COL4A3 and APOL1 G1/G2
+
+🩺 Clinical Phenotype Queries (16–30)
+patients with stable kidney function and high creatinine
+
+patients with eGFR between 60–90 and CKD Stage 3
+
+patients with nephrotic syndrome and no gene mutations
+
+patients diagnosed with CKD Stage 5
+
+patients with fluctuating eGFR values
+
+patients with rapid CKD progression
+
+patients with eGFR below 15
+
+patients with proteinuria and low creatinine
+
+patients with high eGFR but Stage 4 CKD
+
+patients with normal labs and abnormal clinical notes
+
+patients with diabetes and kidney disease
+
+patients with hypertension and CKD
+
+patients with prior renal transplant
+
+patients currently on dialysis
+
+patients flagged for early-stage CKD
+
+👥 Demographics & Population Filters (31–45)
+male patients with Stage 3 CKD
+
+female patients with G1/G1 APOL1
+
+Hispanic patients with low eGFR
+
+Asian patients with nephrotic syndrome
+
+Black patients with APOL1 G2 variant
+
+White patients with high creatinine
+
+elderly patients with UMOD mutations
+
+pediatric patients with CKD
+
+patients aged 30–40 with gene mutations
+
+patients above 70 with Stage 1 CKD
+
+patients under 25 with WT1 mutations
+
+trial eligible patients aged over 65
+
+middle-aged patients with nephrotic syndrome
+
+minority patients with WT1 mutations
+
+patients aged under 18 with APOL1 variants
+
+💊 Medication & Treatment Queries (46–60)
+patients on both Diuretics and ACE Inhibitors
+
+patients taking Erythropoietin only
+
+patients on ARBs with low eGFR
+
+patients not on any medications
+
+patients with medication contraindications
+
+patients with diabetic nephropathy and Statins
+
+patients on >3 medications for CKD
+
+patients receiving nephroprotective therapy
+
+patients on trial medication combinations
+
+patients with discontinued Erythropoietin use
+
+patients on Calcium Channel Blockers and glomerulonephritis
+
+patients with treatment-resistant proteinuria
+
+patients with medication-induced renal impairment
+
+patients adhering to polytherapy regimens
+
+patients with adverse reactions to nephrology drugs
+
+🧪 Lab Combination Queries (61–75)
+high creatinine and normal eGFR
+
+low eGFR with normal creatinine
+
+eGFR > 120 and CKD diagnosis
+
+creatinine < 1 and CKD Stage 4
+
+borderline creatinine with G2 variant
+
+severe proteinuria and G1/G1
+
+stable labs over 6 months
+
+worsening creatinine without eGFR change
+
+significant lab fluctuation and CKD Stage 3
+
+consistently abnormal labs and no symptoms
+
+patients with abnormal labs flagged in notes
+
+creatinine between 2–3 and WT1 mutations
+
+eGFR dropping >10 in one year
+
+eGFR rising without medication change
+
+mismatched lab and genetic profiles
+
+🧬📋 Complex Genomic-Clinical Combos (76–90)
+patients with nephrotic syndrome and G1/G2 APOL1
+
+G2/G2 genotype and Stage 5 CKD
+
+WT1 and NPHS2 mutations with eGFR < 60
+
+trial eligible patients with triple mutations
+
+APOL1 WT and COL4A3 mutation with proteinuria
+
+G0/G1 carriers with severe CKD
+
+compound APOL1 carriers with high eGFR
+
+no mutations but trial ineligible
+
+mutated NPHS2, proteinuria, and CKD Stage 4
+
+multiple mutations with conflicting lab results
+
+patients with mixed ancestry and CKD
+
+Hispanic patients with COL4A3 and G2 variant
+
+Black patients with nephrotic syndrome and WT1
+
+patients with unusual CKD patterns by genotype
+
+patients with confirmed familial kidney disease
+
+🧠 Research Eligibility, Progression, and Study Flags (91–100)
+patients with slow CKD progression
+
+patients with high-risk genetic profiles flagged for study
+
+patients with rare mutation combinations
+
+patients with stable CKD over 5 years
+
+patients identified for early intervention trials
+
+genetically high-risk but symptom-free patients
+
+patients who failed to meet inclusion criteria
+
+patients with adverse event markers in notes
+
+patients progressing faster than predicted
+
+ideal candidates for gene-specific therapy trials
