@@ -395,11 +395,19 @@ class VectorSearch:
         elif 'patients with g0/g1' in query_lower or 'with g0/g1' in query_lower:
             if 'APOL1_Variant' in filtered_df.columns:
                 filtered_df = filtered_df[filtered_df['APOL1_Variant'] == 'G0/G1']
-        elif 'patients with g1/g2' in query_lower or 'with g1/g2' in query_lower:
+        elif 'patients with g1/g2' in query_lower or 'with g1/g2' in query_lower or 'compound heterozygosity in apol1' in query_lower:
             if 'APOL1_Variant' in filtered_df.columns:
                 filtered_df = filtered_df[filtered_df['APOL1_Variant'] == 'G1/G2']
+        elif 'g0/g0 genotype only' in query_lower or 'carrying g0/g0' in query_lower:
+            if 'APOL1_Variant' in filtered_df.columns:
+                filtered_df = filtered_df[filtered_df['APOL1_Variant'] == 'G0/G0']
         
         # Gene counting logic
+        elif 'mutations in at least two genes' in query_lower or 'at least two gene mutations' in query_lower:
+            if all(col in filtered_df.columns for col in ['WT1', 'NPHS1', 'NPHS2', 'COL4A3', 'UMOD']):
+                gene_cols = ['WT1', 'NPHS1', 'NPHS2', 'COL4A3', 'UMOD']
+                filtered_df['mutation_count'] = (filtered_df[gene_cols] == 'Mut').sum(axis=1)
+                filtered_df = filtered_df[filtered_df['mutation_count'] >= 2]
         elif 'four or more mutated genes' in query_lower:
             if all(col in filtered_df.columns for col in ['WT1', 'NPHS1', 'NPHS2', 'COL4A3', 'UMOD']):
                 gene_cols = ['WT1', 'NPHS1', 'NPHS2', 'COL4A3', 'UMOD']
@@ -415,6 +423,38 @@ class VectorSearch:
                 gene_cols = ['WT1', 'NPHS1', 'NPHS2', 'COL4A3', 'UMOD']
                 filtered_df['mutation_count'] = (filtered_df[gene_cols] == 'Mut').sum(axis=1)
                 filtered_df = filtered_df[filtered_df['mutation_count'] == 2]
+        
+        # Complex genetic + clinical combinations
+        elif 'col4a3 mutation and proteinuria' in query_lower:
+            if all(col in filtered_df.columns for col in ['COL4A3', 'Diagnosis']):
+                filtered_df = filtered_df[(filtered_df['COL4A3'] == 'Mut') & 
+                                        (filtered_df['Diagnosis'] == 'Nephrotic Syndrome')]
+        elif 'wt1 mutation but no ckd' in query_lower:
+            if all(col in filtered_df.columns for col in ['WT1', 'Diagnosis']):
+                filtered_df = filtered_df[(filtered_df['WT1'] == 'Mut') & 
+                                        (~filtered_df['Diagnosis'].str.contains('CKD', case=False, na=False))]
+        
+        # CKD Stage patterns
+        elif 'ckd stage 5' in query_lower:
+            if 'Diagnosis' in filtered_df.columns:
+                filtered_df = filtered_df[filtered_df['Diagnosis'] == 'CKD Stage 5']
+        elif 'ckd stage 4' in query_lower:
+            if 'Diagnosis' in filtered_df.columns:
+                filtered_df = filtered_df[filtered_df['Diagnosis'] == 'CKD Stage 4']
+        elif 'ckd stage 3' in query_lower:
+            if 'Diagnosis' in filtered_df.columns:
+                filtered_df = filtered_df[filtered_df['Diagnosis'] == 'CKD Stage 3']
+        
+        # Age range patterns  
+        elif 'aged 30–40' in query_lower or 'aged 30-40' in query_lower:
+            if 'Age' in filtered_df.columns:
+                age_filtered = filtered_df[(filtered_df['Age'] >= 30) & (filtered_df['Age'] <= 40)]
+                if 'gene mutations' in query_lower:
+                    gene_cols = ['WT1', 'NPHS1', 'NPHS2', 'COL4A3', 'UMOD']
+                    has_mutation = (age_filtered[gene_cols] == 'Mut').any(axis=1)
+                    filtered_df = age_filtered[has_mutation]
+                else:
+                    filtered_df = age_filtered
         
         # Specific APOL1 variants (legacy patterns)
         elif 'g2/g2' in query_lower:
