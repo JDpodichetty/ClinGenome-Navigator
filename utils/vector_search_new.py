@@ -453,11 +453,11 @@ class VectorSearch:
                 
                 # Check for kidney dysfunction combination
                 if any(term in query_lower for term in ['kidney dysfunction', 'kidney disease', 'renal dysfunction']):
-                    # Kidney dysfunction = CKD stages or low eGFR or high creatinine
+                    # Kidney dysfunction = Advanced CKD stages or significantly low eGFR or high creatinine
                     kidney_dysfunction = (
-                        (filtered_df['Diagnosis'].str.contains('CKD', na=False)) |
-                        (filtered_df['eGFR'] < 60) |
-                        (filtered_df['Creatinine'] > 1.5)
+                        (filtered_df['Diagnosis'].str.contains('CKD Stage [34]', na=False, regex=True)) |
+                        (filtered_df['eGFR'] < 45) |
+                        (filtered_df['Creatinine'] > 2.0)
                     )
                     filtered_df = apol1_filtered[kidney_dysfunction]
                 else:
@@ -465,11 +465,11 @@ class VectorSearch:
         
         # Kidney dysfunction patterns
         elif any(term in query_lower for term in ['kidney dysfunction', 'kidney disease', 'renal dysfunction', 'kidney failure']):
-            # Kidney dysfunction = CKD stages, low eGFR, or high creatinine
+            # Kidney dysfunction = Advanced CKD stages, significantly low eGFR, or high creatinine
             kidney_dysfunction = (
-                (filtered_df['Diagnosis'].str.contains('CKD', na=False)) |
-                (filtered_df['eGFR'] < 60) |
-                (filtered_df['Creatinine'] > 1.5)
+                (filtered_df['Diagnosis'].str.contains('CKD Stage [34]', na=False, regex=True)) |
+                (filtered_df['eGFR'] < 45) |
+                (filtered_df['Creatinine'] > 2.0)
             )
             filtered_df = filtered_df[kidney_dysfunction]
         
