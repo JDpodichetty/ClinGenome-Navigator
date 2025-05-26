@@ -2,7 +2,6 @@
 Query Normalizer - Systematic approach to handle all query variations
 """
 import re
-import pandas as pd
 from typing import Dict, List, Tuple, Optional
 
 class QueryNormalizer:
