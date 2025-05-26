@@ -374,7 +374,49 @@ class VectorSearch:
                                         (filtered_df['COL4A3'] == 'Mut') | 
                                         (filtered_df['UMOD'] == 'Mut')]
         
-        # Specific APOL1 variants
+        # Age filtering
+        elif 'under 30' in query_lower or 'below 30' in query_lower:
+            if 'Age' in filtered_df.columns:
+                filtered_df = filtered_df[filtered_df['Age'] < 30]
+        elif 'over 60' in query_lower or 'above 60' in query_lower:
+            if 'Age' in filtered_df.columns:
+                filtered_df = filtered_df[filtered_df['Age'] > 60]
+        elif 'young adults' in query_lower:
+            if 'Age' in filtered_df.columns:
+                filtered_df = filtered_df[(filtered_df['Age'] >= 18) & (filtered_df['Age'] <= 35)]
+        
+        # APOL1 variants
+        elif 'patients with g1/g1' in query_lower or 'with g1/g1' in query_lower:
+            if 'APOL1_Variant' in filtered_df.columns:
+                filtered_df = filtered_df[filtered_df['APOL1_Variant'] == 'G1/G1']
+        elif 'patients with g2/g2' in query_lower or 'with g2/g2' in query_lower:
+            if 'APOL1_Variant' in filtered_df.columns:
+                filtered_df = filtered_df[filtered_df['APOL1_Variant'] == 'G2/G2']
+        elif 'patients with g0/g1' in query_lower or 'with g0/g1' in query_lower:
+            if 'APOL1_Variant' in filtered_df.columns:
+                filtered_df = filtered_df[filtered_df['APOL1_Variant'] == 'G0/G1']
+        elif 'patients with g1/g2' in query_lower or 'with g1/g2' in query_lower:
+            if 'APOL1_Variant' in filtered_df.columns:
+                filtered_df = filtered_df[filtered_df['APOL1_Variant'] == 'G1/G2']
+        
+        # Gene counting logic
+        elif 'four or more mutated genes' in query_lower:
+            if all(col in filtered_df.columns for col in ['WT1', 'NPHS1', 'NPHS2', 'COL4A3', 'UMOD']):
+                gene_cols = ['WT1', 'NPHS1', 'NPHS2', 'COL4A3', 'UMOD']
+                filtered_df['mutation_count'] = (filtered_df[gene_cols] == 'Mut').sum(axis=1)
+                filtered_df = filtered_df[filtered_df['mutation_count'] >= 4]
+        elif 'triple gene mutations' in query_lower or 'three gene mutations' in query_lower:
+            if all(col in filtered_df.columns for col in ['WT1', 'NPHS1', 'NPHS2', 'COL4A3', 'UMOD']):
+                gene_cols = ['WT1', 'NPHS1', 'NPHS2', 'COL4A3', 'UMOD']
+                filtered_df['mutation_count'] = (filtered_df[gene_cols] == 'Mut').sum(axis=1)
+                filtered_df = filtered_df[filtered_df['mutation_count'] == 3]
+        elif 'any two gene mutations' in query_lower or 'two gene mutations' in query_lower:
+            if all(col in filtered_df.columns for col in ['WT1', 'NPHS1', 'NPHS2', 'COL4A3', 'UMOD']):
+                gene_cols = ['WT1', 'NPHS1', 'NPHS2', 'COL4A3', 'UMOD']
+                filtered_df['mutation_count'] = (filtered_df[gene_cols] == 'Mut').sum(axis=1)
+                filtered_df = filtered_df[filtered_df['mutation_count'] == 2]
+        
+        # Specific APOL1 variants (legacy patterns)
         elif 'g2/g2' in query_lower:
             if 'APOL1_Variant' in filtered_df.columns:
                 filtered_df = filtered_df[filtered_df['APOL1_Variant'] == 'G2/G2']
