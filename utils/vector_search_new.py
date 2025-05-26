@@ -455,6 +455,15 @@ class VectorSearch:
                     filtered_df = age_filtered[has_mutation]
                 else:
                     filtered_df = age_filtered
+        elif 'aged 40-50' in query_lower or 'aged 40–50' in query_lower:
+            if 'Age' in filtered_df.columns:
+                age_filtered = filtered_df[(filtered_df['Age'] >= 40) & (filtered_df['Age'] <= 50)]
+                if 'gene mutations' in query_lower:
+                    gene_cols = ['WT1', 'NPHS1', 'NPHS2', 'COL4A3', 'UMOD']
+                    has_mutation = (age_filtered[gene_cols] == 'Mut').any(axis=1)
+                    filtered_df = age_filtered[has_mutation]
+                else:
+                    filtered_df = age_filtered
         
         # Specific APOL1 variants (legacy patterns)
         elif 'g2/g2' in query_lower:
