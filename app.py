@@ -33,7 +33,7 @@ if 'data_loaded' not in st.session_state:
 
 def load_default_data():
     """Load the default CSV file if it exists"""
-    default_file = "attached_assets/extended_clinicogenomic_synthetic_data.csv"
+    default_file = "attached_assets/extended_clinicogenomic_synthetic_data - Corrected.csv"
     if os.path.exists(default_file):
         try:
             data_processor = DataProcessor()
