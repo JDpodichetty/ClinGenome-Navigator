@@ -34,13 +34,19 @@ def render_intelligent_search(data_processor, vector_search, llm_processor):
             "Enter your research question:",
             placeholder=
             "e.g., What patterns do you see in patients with APOL1 mutations and kidney dysfunction?",
-            help="Ask natural language questions about the clinical data")
+            help="Ask natural language questions about the clinical data",
+            key="search_query")
 
     with col2:
         st.markdown("<br>", unsafe_allow_html=True)
         search_clicked = st.button("🔍 Analyze",
                                    type="primary",
                                    use_container_width=True)
+    
+    # Trigger search on Enter key press
+    if query and query != st.session_state.get('last_search_query', ''):
+        search_clicked = True
+        st.session_state.last_search_query = query
 
     # Quick action buttons
     st.markdown("### ⚡ Quick Actions")
