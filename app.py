@@ -5,7 +5,7 @@ from pathlib import Path
 
 # Import custom components
 from components.dashboard import render_dashboard
-from components.search_interface import render_search_interface
+
 from components.data_overview import render_data_overview
 from components.visualization import render_visualization
 from components.intelligent_search import render_intelligent_search
