@@ -119,13 +119,15 @@ class EnhancedKnowledgeGraph:
             ))
             stats['patients'] += 1
             
+            # Initialize entity maps
+            entity_ids_map = {}  # clinical notes entities
+            
             # Process clinical notes if available
             if pd.notna(row.get('Clinical_Notes')):
                 clinical_notes = str(row['Clinical_Notes'])
                 entities = self.nlp_processor.extract_clinical_entities(clinical_notes, patient_id)
                 
-                # Insert extracted entities
-                entity_ids = []
+                # Insert extracted entities and collect entity IDs
                 for entity_type, entity_list in entities.items():
                     for entity in entity_list:
                         cursor.execute('''
@@ -138,17 +140,17 @@ class EnhancedKnowledgeGraph:
                             entity.get('severity', ''), entity.get('stage', ''),
                             entity.get('interpretation', '')
                         ))
-                        entity_ids.append(cursor.lastrowid)
+                        entity_id = cursor.lastrowid
+                        entity_ids_map[entity['name']] = entity_id
                         stats['entities'] += 1
                 
                 # Build relationships between entities
                 relationships = self.nlp_processor.build_entity_relationships(entities, row.to_dict())
                 for rel in relationships:
-                    # Find entity IDs for relationship
-                    source_id = self._find_entity_id(patient_id, rel['source'])
-                    target_id = self._find_entity_id(patient_id, rel['target'])
+                    source_id = entity_ids_map.get(rel['source'])
+                    target_id = entity_ids_map.get(rel['target'])
                     
-                    if source_id and target_id:
+                    if source_id and target_id and source_id != target_id:
                         cursor.execute('''
                             INSERT INTO entity_relationships 
                             (source_entity_id, target_entity_id, relationship_type, strength, context)
@@ -156,11 +158,18 @@ class EnhancedKnowledgeGraph:
                         ''', (source_id, target_id, rel['relationship'], 1.0, rel.get('context', '')))
                         stats['relationships'] += 1
             
-            # Add genetic entities
-            self._add_genetic_entities(cursor, patient_id, row)
+            # Add genetic entities and build genetic relationships
+            genetic_entity_ids = self._add_genetic_entities(cursor, patient_id, row)
+            for entity_id in genetic_entity_ids.values():
+                stats['entities'] += 1
             
-            # Add lab result entities
-            self._add_lab_entities(cursor, patient_id, row)
+            # Add lab result entities and build lab relationships
+            lab_entity_ids = self._add_lab_entities(cursor, patient_id, row)
+            for entity_id in lab_entity_ids.values():
+                stats['entities'] += 1
+            
+            # Create cross-domain relationships (genetic-lab, genetic-clinical, lab-clinical)
+            self._create_cross_domain_relationships(cursor, patient_id, entity_ids_map, genetic_entity_ids, lab_entity_ids, stats)
         
         self.connection.commit()
         print(f"Enhanced knowledge graph built: {stats['patients']} patients, {stats['entities']} entities, {stats['relationships']} relationships")
@@ -179,28 +188,36 @@ class EnhancedKnowledgeGraph:
         return result[0] if result else None
     
     def _add_genetic_entities(self, cursor, patient_id: str, row: pd.Series):
-        """Add genetic variant entities"""
+        """Add genetic variant entities and return entity IDs"""
+        genetic_entity_ids = {}
+        
         # APOL1 variant
         if pd.notna(row.get('APOL1_Variant')):
-            risk_level = self._assess_apol1_risk(row['APOL1_Variant'])
+            risk_level = self._assess_apol1_risk(str(row['APOL1_Variant']))
             cursor.execute('''
                 INSERT INTO clinical_entities 
                 (patient_id, entity_type, entity_name, entity_value, interpretation)
                 VALUES (?, ?, ?, ?, ?)
-            ''', (patient_id, 'genetic_variant', 'APOL1', row['APOL1_Variant'], risk_level))
+            ''', (patient_id, 'genetic_variant', 'APOL1', str(row['APOL1_Variant']), risk_level))
+            genetic_entity_ids['APOL1'] = cursor.lastrowid
         
         # Gene mutations
         gene_cols = ['NPHS1', 'NPHS2', 'WT1', 'COL4A3', 'UMOD']
         for gene in gene_cols:
-            if pd.notna(row.get(gene)) and row[gene] == 'Mut':
+            if pd.notna(row.get(gene)) and str(row[gene]) == 'Mut':
                 cursor.execute('''
                     INSERT INTO clinical_entities 
                     (patient_id, entity_type, entity_name, entity_value, interpretation)
                     VALUES (?, ?, ?, ?, ?)
                 ''', (patient_id, 'gene_mutation', gene, 'Mut', 'pathogenic_mutation'))
+                genetic_entity_ids[gene] = cursor.lastrowid
+        
+        return genetic_entity_ids
     
     def _add_lab_entities(self, cursor, patient_id: str, row: pd.Series):
-        """Add laboratory result entities with clinical interpretation"""
+        """Add laboratory result entities with clinical interpretation and return entity IDs"""
+        lab_entity_ids = {}
+        
         # eGFR
         if pd.notna(row.get('eGFR')):
             egfr_value = float(row['eGFR'])
@@ -212,6 +229,7 @@ class EnhancedKnowledgeGraph:
                 (patient_id, entity_type, entity_name, entity_value, interpretation, stage)
                 VALUES (?, ?, ?, ?, ?, ?)
             ''', (patient_id, 'lab_result', 'eGFR', str(egfr_value), interpretation, ckd_stage))
+            lab_entity_ids['eGFR'] = cursor.lastrowid
         
         # Creatinine
         if pd.notna(row.get('Creatinine')):
@@ -223,6 +241,88 @@ class EnhancedKnowledgeGraph:
                 (patient_id, entity_type, entity_name, entity_value, interpretation)
                 VALUES (?, ?, ?, ?, ?)
             ''', (patient_id, 'lab_result', 'Creatinine', str(creat_value), interpretation))
+            lab_entity_ids['Creatinine'] = cursor.lastrowid
+        
+        return lab_entity_ids
+    
+    def _create_cross_domain_relationships(self, cursor, patient_id: str, clinical_entities: dict, 
+                                         genetic_entities: dict, lab_entities: dict, stats: dict):
+        """Create meaningful triplet relationships between different entity domains"""
+        
+        # APOL1 genetic variant → kidney function relationships
+        if 'APOL1' in genetic_entities and 'eGFR' in lab_entities:
+            cursor.execute('''
+                INSERT INTO entity_relationships 
+                (source_entity_id, target_entity_id, relationship_type, strength, context)
+                VALUES (?, ?, ?, ?, ?)
+            ''', (genetic_entities['APOL1'], lab_entities['eGFR'], 'influences_kidney_function', 0.9, 
+                  'APOL1 genetic variants directly impact kidney filtration capacity'))
+            stats['relationships'] += 1
+        
+        if 'APOL1' in genetic_entities and 'Creatinine' in lab_entities:
+            cursor.execute('''
+                INSERT INTO entity_relationships 
+                (source_entity_id, target_entity_id, relationship_type, strength, context)
+                VALUES (?, ?, ?, ?, ?)
+            ''', (genetic_entities['APOL1'], lab_entities['Creatinine'], 'correlates_with', 0.8,
+                  'APOL1 variants correlate with serum creatinine levels'))
+            stats['relationships'] += 1
+        
+        # Gene mutations → kidney function relationships
+        kidney_genes = ['NPHS1', 'NPHS2', 'WT1', 'COL4A3', 'UMOD']
+        for gene in kidney_genes:
+            if gene in genetic_entities:
+                if 'eGFR' in lab_entities:
+                    cursor.execute('''
+                        INSERT INTO entity_relationships 
+                        (source_entity_id, target_entity_id, relationship_type, strength, context)
+                        VALUES (?, ?, ?, ?, ?)
+                    ''', (genetic_entities[gene], lab_entities['eGFR'], 'causes_kidney_dysfunction', 0.95,
+                          f'{gene} mutations directly cause reduced kidney function'))
+                    stats['relationships'] += 1
+                
+                if 'Creatinine' in lab_entities:
+                    cursor.execute('''
+                        INSERT INTO entity_relationships 
+                        (source_entity_id, target_entity_id, relationship_type, strength, context)
+                        VALUES (?, ?, ?, ?, ?)
+                    ''', (genetic_entities[gene], lab_entities['Creatinine'], 'elevates', 0.9,
+                          f'{gene} mutations typically elevate serum creatinine'))
+                    stats['relationships'] += 1
+        
+        # Lab value correlations (eGFR ↔ Creatinine inverse relationship)
+        if 'eGFR' in lab_entities and 'Creatinine' in lab_entities:
+            cursor.execute('''
+                INSERT INTO entity_relationships 
+                (source_entity_id, target_entity_id, relationship_type, strength, context)
+                VALUES (?, ?, ?, ?, ?)
+            ''', (lab_entities['eGFR'], lab_entities['Creatinine'], 'inversely_correlates_with', 0.95,
+                  'eGFR and creatinine show strong inverse correlation in kidney function assessment'))
+            stats['relationships'] += 1
+        
+        # Clinical notes entities → genetic/lab relationships
+        for entity_name, entity_id in clinical_entities.items():
+            # Connect symptoms to lab values
+            if entity_name in ['proteinuria', 'edema', 'fatigue']:
+                if 'eGFR' in lab_entities:
+                    cursor.execute('''
+                        INSERT INTO entity_relationships 
+                        (source_entity_id, target_entity_id, relationship_type, strength, context)
+                        VALUES (?, ?, ?, ?, ?)
+                    ''', (entity_id, lab_entities['eGFR'], 'indicates_dysfunction_of', 0.8,
+                          f'{entity_name} symptoms indicate kidney function decline'))
+                    stats['relationships'] += 1
+            
+            # Connect conditions to genetic variants
+            if entity_name in ['diabetic nephropathy', 'ckd', 'chronic kidney disease']:
+                if 'APOL1' in genetic_entities:
+                    cursor.execute('''
+                        INSERT INTO entity_relationships 
+                        (source_entity_id, target_entity_id, relationship_type, strength, context)
+                        VALUES (?, ?, ?, ?, ?)
+                    ''', (genetic_entities['APOL1'], entity_id, 'predisposes_to', 0.85,
+                          'APOL1 high-risk variants predispose to kidney disease development'))
+                    stats['relationships'] += 1
     
     def query_cohort_by_criteria(self, criteria: Dict[str, Any]) -> List[str]:
         """Query patients based on complex clinical criteria"""
