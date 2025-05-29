@@ -8,7 +8,7 @@ from components.dashboard import render_dashboard
 from components.data_overview import render_data_overview
 from components.visualization import render_visualization
 from components.intelligent_search import render_intelligent_search
-from components.knowledge_graph_search import render_knowledge_graph_search
+from components.neo4j_knowledge_graph_search import render_neo4j_knowledge_graph_search
 from utils.data_processor import DataProcessor
 from utils.vector_search_new import VectorSearch
 from utils.llm_processor import LLMProcessor
