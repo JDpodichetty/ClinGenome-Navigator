@@ -7,7 +7,7 @@ from pathlib import Path
 from components.dashboard import render_dashboard
 from components.data_overview import render_data_overview
 from components.visualization import render_visualization
-from components.enhanced_intelligent_search import render_enhanced_intelligent_search
+from components.intelligent_search import render_intelligent_search
 from components.simple_knowledge_graph import render_simple_knowledge_graph
 from utils.data_processor import DataProcessor
 from utils.vector_search_new import VectorSearch
@@ -123,7 +123,7 @@ def main():
         tab1, tab2, tab3 = st.tabs(["🧠 Intelligent Search Hub", "📊 Data Exploration", "📈 Knowledge Graph"])
         
         with tab1:
-            render_enhanced_intelligent_search(st.session_state.data_processor, st.session_state.vector_search, st.session_state.llm_processor)
+            render_intelligent_search(st.session_state.data_processor, st.session_state.vector_search, st.session_state.llm_processor)
         
         with tab2:
             render_visualization(st.session_state.data_processor)

@@ -3,6 +3,7 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 from typing import Dict, List
+from utils.enhanced_knowledge_graph import EnhancedKnowledgeGraph
 import json
 
 
@@ -18,9 +19,19 @@ def render_intelligent_search(data_processor, vector_search, llm_processor):
 
     df = data_processor.get_data()
 
+    # Initialize enhanced knowledge graph for improved query processing
+    if 'enhanced_kg' not in st.session_state:
+        with st.spinner("Building enhanced knowledge graph from clinical notes..."):
+            enhanced_kg = EnhancedKnowledgeGraph()
+            kg_stats = enhanced_kg.build_knowledge_graph(df)
+            st.session_state.enhanced_kg = enhanced_kg
+            st.session_state.enhanced_kg_stats = kg_stats
+    
+    enhanced_kg = st.session_state.enhanced_kg
+
     # Description of the tool
     st.markdown("""
-    **ClinGenome Navigator** analyzes a synthetic clinico genomic data for kidney disease research with focus on chronic kidney disease (CKD) and genetic variants. 
+    **ClinGenome Navigator** analyzes authentic clinical genomic data for kidney disease research with focus on chronic kidney disease (CKD) and genetic variants. 
     This platform combines patient demographics, genetic markers (APOL1, NPHS1, NPHS2), and clinical notes to generate insights and identify research opportunities for sponsors. 
     Use natural language queries to explore patterns, analyze cohorts, and extract insights from 1,500 patient records for pharmaceutical research and clinical trial planning.
     """)
@@ -73,16 +84,22 @@ def render_intelligent_search(data_processor, vector_search, llm_processor):
             query = "Generate a comprehensive research summary of this clinical dataset"
             search_clicked = True
 
-    # Process query with LLM
+    # Process query with LLM and enhanced knowledge graph
     if search_clicked and query.strip():
         with st.spinner("🧠 Analyzing your query with advanced AI..."):
             try:
                 # Create context from the dataset
                 context_data = _create_dataset_context(df)
+                
+                # Enhanced query processing with knowledge graph
+                enhanced_results = _process_query_with_knowledge_graph(query, enhanced_kg, df)
+                
+                # Combine traditional context with knowledge graph insights
+                enhanced_context = context_data + "\n\nKnowledge Graph Insights:\n" + enhanced_results
 
-                # Process query with LLM
+                # Process query with LLM using enhanced context
                 llm_response = llm_processor.process_clinical_query(
-                    query, context_data)
+                    query, enhanced_context)
 
                 if "error" not in llm_response:
                     st.markdown("---")
@@ -289,6 +306,92 @@ def render_intelligent_search(data_processor, vector_search, llm_processor):
             except Exception as e:
                 st.error(f"Error processing query: {str(e)}")
 
+
+def _process_query_with_knowledge_graph(query: str, enhanced_kg: EnhancedKnowledgeGraph, df: pd.DataFrame) -> str:
+    """Process query using knowledge graph to extract relevant clinical insights"""
+    
+    query_lower = query.lower()
+    insights = []
+    
+    # Parse query for clinical criteria
+    criteria = {}
+    
+    # Age patterns
+    if 'elderly' in query_lower or 'older' in query_lower or 'age > 65' in query_lower:
+        criteria['min_age'] = 65
+    elif 'young' in query_lower or 'age < 50' in query_lower:
+        criteria['max_age'] = 50
+    
+    # Risk level patterns
+    if 'high risk' in query_lower or 'high-risk' in query_lower:
+        criteria['apol1_risk_level'] = 'high'
+    elif 'low risk' in query_lower or 'low-risk' in query_lower:
+        criteria['apol1_risk_level'] = 'low'
+    
+    # eGFR patterns
+    if 'egfr below 30' in query_lower or 'egfr < 30' in query_lower or 'severe kidney' in query_lower:
+        criteria['egfr_max'] = 30
+    elif 'egfr below 45' in query_lower or 'egfr < 45' in query_lower or 'moderate kidney' in query_lower:
+        criteria['egfr_max'] = 45
+    elif 'egfr below 60' in query_lower or 'egfr < 60' in query_lower:
+        criteria['egfr_max'] = 60
+    
+    # Condition patterns
+    conditions = []
+    if 'diabetic nephropathy' in query_lower:
+        conditions.append('diabetic nephropathy')
+    if 'ckd' in query_lower or 'chronic kidney disease' in query_lower:
+        conditions.append('ckd')
+    if 'hypertension' in query_lower:
+        conditions.append('hypertension')
+    
+    if conditions:
+        criteria['has_conditions'] = conditions
+    
+    # Trial eligibility
+    if 'trial eligible' in query_lower or 'clinical trial' in query_lower:
+        criteria['trial_eligible'] = 'Yes'
+    
+    # Execute knowledge graph query if criteria found
+    if criteria:
+        try:
+            patient_ids = enhanced_kg.query_cohort_by_criteria(criteria)
+            
+            if patient_ids:
+                # Analyze cohort characteristics
+                characteristics = enhanced_kg.analyze_cohort_characteristics(patient_ids)
+                
+                insights.append(f"Knowledge Graph Analysis found {len(patient_ids)} patients matching query criteria.")
+                insights.append(f"Cohort characteristics: Average age {characteristics['demographics']['average_age']:.1f}, Average eGFR {characteristics['demographics']['average_egfr']:.1f}")
+                insights.append(f"Risk assessment: {characteristics['risk_assessment']['high_risk_patients']} high-risk patients ({characteristics['risk_assessment']['risk_percentage']:.1f}%)")
+                
+                if characteristics['common_conditions']:
+                    top_conditions = list(characteristics['common_conditions'].items())[:3]
+                    condition_summary = ', '.join([f"{cond} ({count} patients)" for cond, count in top_conditions])
+                    insights.append(f"Most common conditions: {condition_summary}")
+                
+                # Add genetic profile insights
+                apol1_dist = characteristics['genetic_profile']['apol1_distribution']
+                if apol1_dist:
+                    high_risk_genetic = characteristics['genetic_profile']['high_risk_genetic_count']
+                    insights.append(f"Genetic profile: {high_risk_genetic} patients with high-risk APOL1 variants")
+        
+        except Exception as e:
+            insights.append("Knowledge graph analysis encountered an issue during processing.")
+    
+    # Add general dataset insights for queries about patterns or summaries
+    if any(word in query_lower for word in ['pattern', 'summary', 'insight', 'analyze', 'research']):
+        try:
+            kg_stats = enhanced_kg.get_graph_statistics()
+            insights.append(f"Clinical knowledge graph contains {kg_stats['total_entities']} entities across {kg_stats['total_patients']} patients.")
+            
+            if kg_stats['entity_counts_by_type']:
+                entity_summary = ', '.join([f"{etype}: {count}" for etype, count in kg_stats['entity_counts_by_type'].items()])
+                insights.append(f"Entity distribution: {entity_summary}")
+        except Exception:
+            pass
+    
+    return '\n'.join(insights) if insights else "No specific knowledge graph insights available for this query."
 
 def _create_dataset_context(df: pd.DataFrame) -> str:
     """Create context summary of the dataset for LLM processing"""
