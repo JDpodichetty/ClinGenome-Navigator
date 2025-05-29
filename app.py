@@ -129,7 +129,7 @@ def main():
             render_visualization(st.session_state.data_processor)
         
         with tab3:
-            render_knowledge_graph_search(st.session_state.data_processor, st.session_state.vector_search, st.session_state.llm_processor)
+            render_neo4j_knowledge_graph_search(st.session_state.data_processor, st.session_state.vector_search, st.session_state.llm_processor)
     
     # Copyright footer
     st.markdown("---")
