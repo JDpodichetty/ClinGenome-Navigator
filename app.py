@@ -120,16 +120,16 @@ def main():
         </style>
         """, unsafe_allow_html=True)
         
-        tab1, tab2, tab3 = st.tabs(["🧠 Intelligent Search Hub", "🔗 Knowledge Graph Search", "📊 Data Exploration"])
+        tab1, tab2, tab3 = st.tabs(["🧠 Intelligent Search Hub", "📊 Data Exploration", "🔗 Knowledge Graph Search"])
         
         with tab1:
             render_intelligent_search(st.session_state.data_processor, st.session_state.vector_search, st.session_state.llm_processor)
         
         with tab2:
-            render_knowledge_graph_search(st.session_state.data_processor, st.session_state.vector_search, st.session_state.llm_processor)
+            render_visualization(st.session_state.data_processor)
         
         with tab3:
-            render_visualization(st.session_state.data_processor)
+            render_knowledge_graph_search(st.session_state.data_processor, st.session_state.vector_search, st.session_state.llm_processor)
     
     # Copyright footer
     st.markdown("---")
