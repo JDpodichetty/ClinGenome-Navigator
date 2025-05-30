@@ -3,6 +3,7 @@ import numpy as np
 import streamlit as st
 from typing import Dict, List, Tuple, Optional
 import io
+from utils.enhanced_knowledge_graph import EnhancedKnowledgeGraph
 
 class DataProcessor:
     """Handles data loading, processing, and preparation for the clinical genomics platform"""
@@ -11,6 +12,7 @@ class DataProcessor:
         self.df = None
         self.metadata = {}
         self.processed_texts = []
+        self.enhanced_kg = None
     
     def load_data(self, file_path: str) -> pd.DataFrame:
         """Load data from CSV file"""
@@ -45,6 +47,9 @@ class DataProcessor:
         
         # Create searchable text representations
         self._create_searchable_texts()
+        
+        # Initialize enhanced knowledge graph
+        self._initialize_enhanced_kg()
     
     def _generate_metadata(self):
         """Generate metadata about the dataset"""
@@ -175,6 +180,12 @@ class DataProcessor:
                 text_parts.append(f"Trial eligible: {row['Eligible_For_Trial']}")
             
             self.processed_texts.append(" | ".join(text_parts))
+    
+    def _initialize_enhanced_kg(self):
+        """Initialize the enhanced knowledge graph with the loaded data"""
+        if self.df is not None:
+            self.enhanced_kg = EnhancedKnowledgeGraph()
+            self.enhanced_kg.build_knowledge_graph(self.df)
     
     def get_data(self) -> pd.DataFrame:
         """Return the processed dataframe"""

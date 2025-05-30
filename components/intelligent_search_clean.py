@@ -10,9 +10,16 @@ def render_intelligent_search_clean(data_processor, vector_search, llm_processor
     st.markdown("# 🧠 Intelligent Search Hub")
     st.markdown("### Advanced AI-powered analysis of clinical genomics data")
     
-    # Get data and enhanced knowledge graph from data processor
+    # Get data and initialize enhanced knowledge graph
     df = data_processor.df
-    enhanced_kg = data_processor.enhanced_kg
+    
+    # Initialize enhanced knowledge graph if not already done
+    if not hasattr(data_processor, 'enhanced_kg') or data_processor.enhanced_kg is None:
+        from utils.enhanced_knowledge_graph import EnhancedKnowledgeGraph
+        enhanced_kg = EnhancedKnowledgeGraph()
+        enhanced_kg.build_knowledge_graph(df)
+    else:
+        enhanced_kg = data_processor.enhanced_kg
     
     # Search interface
     col1, col2 = st.columns([4, 1])
