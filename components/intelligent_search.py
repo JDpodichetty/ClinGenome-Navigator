@@ -99,20 +99,34 @@ def render_intelligent_search(data_processor, vector_search, llm_processor):
                 
                 # Check if knowledge graph returned specific results
                 if enhanced_results and "🧬 Knowledge Graph" in enhanced_results:
-                    # Display knowledge graph results directly without LLM processing
-                    st.markdown("---")
-                    st.markdown("### 🧬 Knowledge Graph Analysis Results")
-                    st.success(enhanced_results)
+                    # Create a special context for knowledge graph results
+                    enhanced_context = enhanced_results + "\n\nDataset Overview:\n" + context_data
                     
-                    # Skip LLM processing to preserve precise results
-                    return
-                
-                # Combine traditional context with knowledge graph insights for general queries
-                enhanced_context = context_data + "\n\nKnowledge Graph Insights:\n" + enhanced_results
-
-                # Process query with LLM using enhanced context
-                llm_response = llm_processor.process_clinical_query(
-                    query, enhanced_context)
+                    # Process with LLM but with knowledge graph insights as primary context
+                    llm_response = llm_processor.process_clinical_query(query, enhanced_context)
+                    
+                    # Override the summary to highlight knowledge graph findings
+                    if "error" not in llm_response:
+                        # Extract patient count from knowledge graph results
+                        import re
+                        patient_match = re.search(r'Found (\d+) patients', enhanced_results)
+                        patient_count = patient_match.group(1) if patient_match else "specific cohort"
+                        
+                        # Create enhanced summary
+                        kg_summary = f"Knowledge Graph Analysis identified {patient_count} patients meeting your specific criteria from the authentic clinical dataset. This represents a precisely filtered cohort based on relationship traversal rather than simple keyword matching."
+                        llm_response["summary"] = kg_summary
+                        
+                        # Add knowledge graph insights to key findings
+                        if "key_insights" in llm_response:
+                            kg_insights = enhanced_results.split('\n')
+                            # Prepend knowledge graph insights
+                            llm_response["key_insights"] = '\n'.join(kg_insights[1:4]) + '\n' + llm_response["key_insights"]
+                else:
+                    # Combine traditional context with knowledge graph insights for general queries
+                    enhanced_context = context_data + "\n\nKnowledge Graph Insights:\n" + enhanced_results
+                    
+                    # Process query with LLM using enhanced context
+                    llm_response = llm_processor.process_clinical_query(query, enhanced_context)
 
                 if "error" not in llm_response:
                     st.markdown("---")
