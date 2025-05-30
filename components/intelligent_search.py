@@ -95,6 +95,7 @@ def render_intelligent_search(data_processor, vector_search, llm_processor):
                 context_data = _create_dataset_context(df)
                 
                 # Enhanced query processing with knowledge graph
+                enhanced_kg = st.session_state.enhanced_kg
                 enhanced_results = _process_query_with_knowledge_graph(query, enhanced_kg, df)
                 
                 # Check if knowledge graph returned specific results
@@ -213,15 +214,19 @@ IMPORTANT: Use the exact patient count of {patient_count} in your response. Do n
 
                     # Use knowledge graph results for precise patient filtering
                     if enhanced_results and "🧬 Knowledge Graph" in enhanced_results:
-                        # Extract patient IDs from knowledge graph analysis
-                        import re
-                        patient_match = re.search(r'Found (\d+) patients', enhanced_results)
-                        if patient_match:
-                            # Get patient IDs from the knowledge graph analyzer
-                            kg_analyzer = KGCohortAnalyzer(enhanced_kg)
-                            
-                            # Determine which analysis was performed and get patient IDs
-                            query_lower = query.lower()
+                        # Get patient IDs from the knowledge graph analyzer
+                        kg_analyzer = st.session_state.kg_cohort_analyzer
+                        
+                        # Determine which analysis was performed and get patient IDs
+                        query_lower = query.lower()
+                        mutation_patterns = ['two or more mutations', 'multiple mutations', 'multi mutation', '2+ mutations', 'more than one mutation', 'two mutations', 'several mutations']
+                        egfr_patterns = ['high egfr', 'elevated egfr', 'preserved kidney', 'good kidney function', 'egfr values', 'egfr levels', 'low egfr', 'reduced egfr', 'kidney dysfunction']
+                        
+                        has_mutation_pattern = any(phrase in query_lower for phrase in mutation_patterns)
+                        has_egfr_pattern = any(phrase in query_lower for phrase in egfr_patterns)
+                        has_combined_pattern = ('mutation' in query_lower and 'egfr' in query_lower and ('two' in query_lower or 'multiple' in query_lower or 'more' in query_lower))
+                        
+                        if has_mutation_pattern or has_egfr_pattern or has_combined_pattern:
                             is_low_egfr = any(phrase in query_lower for phrase in ['low egfr', 'reduced egfr', 'kidney dysfunction', 'low'])
                             
                             if is_low_egfr:
@@ -234,9 +239,10 @@ IMPORTANT: Use the exact patient count of {patient_count} in your response. Do n
                                 # Filter dataframe to only include knowledge graph patients
                                 relevant_df = df[df['PatientID'].isin(patient_ids)].copy()
                             else:
-                                relevant_df = df.iloc[0:0].copy()  # Empty dataframe
+                                relevant_df = df.iloc[0:0].copy()
                         else:
-                            relevant_df = df.iloc[0:0].copy()  # Empty dataframe
+                            # For other knowledge graph queries
+                            relevant_df = df.iloc[:100].copy()  # Limited fallback
                     else:
                         # Fallback for general queries - use limited vector search
                         indices, scores = vector_search.search(query, top_k=100, similarity_threshold=0.3)
