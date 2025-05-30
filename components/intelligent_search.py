@@ -4,6 +4,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 from typing import Dict, List
 from utils.enhanced_knowledge_graph import EnhancedKnowledgeGraph
+from utils.kg_cohort_analyzer import KGCohortAnalyzer
 import json
 
 
@@ -26,8 +27,10 @@ def render_intelligent_search(data_processor, vector_search, llm_processor):
             kg_stats = enhanced_kg.build_knowledge_graph(df)
             st.session_state.enhanced_kg = enhanced_kg
             st.session_state.enhanced_kg_stats = kg_stats
+            st.session_state.kg_cohort_analyzer = KGCohortAnalyzer(enhanced_kg)
     
     enhanced_kg = st.session_state.enhanced_kg
+    kg_analyzer = st.session_state.kg_cohort_analyzer
 
     # Description of the tool
     st.markdown("""
@@ -308,105 +311,99 @@ def render_intelligent_search(data_processor, vector_search, llm_processor):
 
 
 def _process_query_with_knowledge_graph(query: str, enhanced_kg: EnhancedKnowledgeGraph, df: pd.DataFrame) -> str:
-    """Process query using knowledge graph to extract relevant clinical insights"""
+    """Process query using knowledge graph relationship traversal for sophisticated cohort analysis"""
     
     query_lower = query.lower()
     insights = []
     
-    # Parse query for clinical criteria
-    criteria = {}
+    # Initialize knowledge graph cohort analyzer
+    kg_analyzer = KGCohortAnalyzer(enhanced_kg)
     
-    # Age patterns
-    if 'elderly' in query_lower or 'older' in query_lower or 'age > 65' in query_lower or 'over 65' in query_lower:
-        criteria['min_age'] = 65
-    elif 'young' in query_lower or 'age < 50' in query_lower or 'under 50' in query_lower:
-        criteria['max_age'] = 50
+    # Detect query patterns for knowledge graph-based cohort analysis
+    kg_cohort_result = None
     
-    # APOL1 specific variant patterns
-    if 'g1/g1' in query_lower or 'g1 g1' in query_lower:
-        criteria['apol1_risk_level'] = 'high'
-    elif 'g2/g2' in query_lower or 'g2 g2' in query_lower:
-        criteria['apol1_risk_level'] = 'high'
-    elif 'g1/g2' in query_lower or 'g1 g2' in query_lower:
-        criteria['apol1_risk_level'] = 'high'
-    elif 'g0/g0' in query_lower or 'g0 g0' in query_lower:
-        criteria['apol1_risk_level'] = 'low'
+    # High-risk genetic cohort analysis
+    if any(phrase in query_lower for phrase in ['high risk', 'high-risk', 'genetic risk', 'apol1', 'gene mutation']):
+        kg_cohort_result = kg_analyzer.find_high_risk_genetic_cohort()
+        insights.append(f"Knowledge Graph Genetic Analysis: Found {kg_cohort_result['total_patients']} high-risk patients")
+        insights.append(f"- APOL1 variant patients: {kg_cohort_result['apol1_patients']}")
+        insights.append(f"- Gene mutation patients: {kg_cohort_result['mutation_patients']}")
     
-    # Risk level patterns
-    if 'high risk' in query_lower or 'high-risk' in query_lower:
-        criteria['apol1_risk_level'] = 'high'
-    elif 'low risk' in query_lower or 'low-risk' in query_lower:
-        criteria['apol1_risk_level'] = 'low'
+    # Kidney dysfunction progression analysis
+    elif any(phrase in query_lower for phrase in ['kidney dysfunction', 'kidney failure', 'egfr', 'creatinine', 'progression']):
+        egfr_threshold = 30 if 'severe' in query_lower or 'failure' in query_lower else 45
+        kg_cohort_result = kg_analyzer.find_kidney_dysfunction_progression_cohort(egfr_threshold)
+        insights.append(f"Knowledge Graph Kidney Analysis: Found {kg_cohort_result['total_patients']} patients with dysfunction patterns")
+        insights.append(f"- Lab-based dysfunction: {kg_cohort_result['lab_dysfunction']} patients")
+        insights.append(f"- Symptom-based indicators: {kg_cohort_result['symptom_based']} patients")
+        insights.append(f"- Edema-related cases: {kg_cohort_result['edema_based']} patients")
     
-    # eGFR patterns with more variations
-    if any(phrase in query_lower for phrase in ['egfr below 30', 'egfr < 30', 'egfr under 30', 'severe kidney', 'kidney failure']):
-        criteria['egfr_max'] = 30
-    elif any(phrase in query_lower for phrase in ['egfr below 45', 'egfr < 45', 'egfr under 45', 'moderate kidney', 'stage 3', 'stage 4']):
-        criteria['egfr_max'] = 45
-    elif any(phrase in query_lower for phrase in ['egfr below 60', 'egfr < 60', 'egfr under 60', 'reduced kidney', 'kidney dysfunction']):
-        criteria['egfr_max'] = 60
+    # Genetic-lab correlation analysis
+    elif any(phrase in query_lower for phrase in ['correlation', 'genetic lab', 'variant effect', 'mutation impact']):
+        kg_cohort_result = kg_analyzer.find_genetic_lab_correlation_cohort()
+        insights.append(f"Knowledge Graph Correlation Analysis: Found {kg_cohort_result['total_patients']} patients with genetic-lab correlations")
+        insights.append(f"- APOL1-creatinine correlations: {kg_cohort_result['apol1_creatinine']} patients")
+        insights.append(f"- Mutation-creatinine elevations: {kg_cohort_result['mutation_creatinine']} patients")
     
-    # Gene mutation patterns
-    if any(gene in query_lower for gene in ['nphs1', 'nphs2', 'wt1', 'col4a3', 'umod']):
-        # Add specific gene filtering logic if needed
-        pass
+    # Complex phenotype analysis
+    elif any(phrase in query_lower for phrase in ['complex', 'phenotype', 'multi-factor', 'combined']):
+        complex_criteria = {
+            'genetic_risk': True,
+            'kidney_dysfunction': True,
+            'genetic_lab_correlation': True,
+            'egfr_threshold': 45
+        }
+        kg_cohort_result = kg_analyzer.find_complex_phenotype_cohort(complex_criteria)
+        insights.append(f"Knowledge Graph Complex Phenotype Analysis: Found {kg_cohort_result['total_patients']} patients")
+        insights.append(f"Criteria breakdown: {kg_cohort_result['criteria_breakdown']}")
     
-    # Condition patterns
-    conditions = []
-    if 'diabetic nephropathy' in query_lower or 'diabetic kidney' in query_lower:
-        conditions.append('diabetic nephropathy')
-    if 'ckd' in query_lower or 'chronic kidney disease' in query_lower or 'chronic kidney' in query_lower:
-        conditions.append('ckd')
-    if 'hypertension' in query_lower or 'high blood pressure' in query_lower:
-        conditions.append('hypertension')
+    # High-strength relationship analysis
+    elif any(phrase in query_lower for phrase in ['strong', 'significant', 'high confidence', 'reliable']):
+        kg_cohort_result = kg_analyzer.analyze_relationship_strength_cohort(min_strength=0.9)
+        insights.append(f"Knowledge Graph High-Confidence Analysis: Found {kg_cohort_result['total_patients']} patients in strong relationships")
+        insights.append(f"Minimum relationship strength: {kg_cohort_result['min_strength_threshold']}")
     
-    if conditions:
-        criteria['has_conditions'] = conditions
-    
-    # Trial eligibility patterns
-    if any(phrase in query_lower for phrase in ['trial eligible', 'clinical trial', 'trial ready', 'eligible for trial']):
-        criteria['trial_eligible'] = 'Yes'
-    
-    # Execute knowledge graph query if criteria found
-    if criteria:
-        try:
-            patient_ids = enhanced_kg.query_cohort_by_criteria(criteria)
+    # If we found a cohort through knowledge graph analysis, add relationship summary
+    if kg_cohort_result and kg_cohort_result['patient_ids']:
+        relationship_summary = kg_analyzer.get_cohort_relationship_summary(kg_cohort_result['patient_ids'])
+        if relationship_summary:
+            insights.append(f"Relationship patterns in cohort:")
+            insights.append(f"- Total relationships: {relationship_summary['total_relationships']}")
+            insights.append(f"- Total entities: {relationship_summary['total_entities']}")
             
-            if patient_ids:
-                # Analyze cohort characteristics
-                characteristics = enhanced_kg.analyze_cohort_characteristics(patient_ids)
-                
-                insights.append(f"Knowledge Graph Analysis found {len(patient_ids)} patients matching query criteria:")
-                insights.append(f"Query filters applied: {list(criteria.keys())}")
-                insights.append(f"Cohort characteristics: Average age {characteristics['demographics']['average_age']:.1f}, Average eGFR {characteristics['demographics']['average_egfr']:.1f}")
-                insights.append(f"Risk assessment: {characteristics['risk_assessment']['high_risk_patients']} high-risk patients ({characteristics['risk_assessment']['risk_percentage']:.1f}%)")
-                
-                if characteristics['common_conditions']:
-                    top_conditions = list(characteristics['common_conditions'].items())[:3]
-                    condition_summary = ', '.join([f"{cond} ({count} patients)" for cond, count in top_conditions])
-                    insights.append(f"Most common conditions: {condition_summary}")
-                
-                # Add genetic profile insights
-                apol1_dist = characteristics['genetic_profile']['apol1_distribution']
-                if apol1_dist:
-                    high_risk_genetic = characteristics['genetic_profile']['high_risk_genetic_count']
-                    insights.append(f"Genetic profile: {high_risk_genetic} patients with high-risk APOL1 variants")
-            else:
-                insights.append(f"No patients found matching criteria: {criteria}")
-        
-        except Exception as e:
-            insights.append(f"Knowledge graph analysis error: {str(e)}")
-    else:
-        insights.append("No specific filtering criteria detected in query - showing general dataset insights.")
+            # Top relationship types
+            top_relationships = list(relationship_summary['relationship_types'].items())[:3]
+            if top_relationships:
+                rel_summary = ', '.join([f"{rel}: {count}" for rel, count in top_relationships])
+                insights.append(f"- Top relationships: {rel_summary}")
     
-    # Add general dataset insights for queries about patterns or summaries
-    if any(word in query_lower for word in ['pattern', 'summary', 'insight', 'analyze', 'research']):
+    # Fallback to traditional criteria-based analysis if no KG patterns detected
+    if not kg_cohort_result:
+        criteria = {}
+        
+        # Parse traditional criteria
+        if 'high risk' in query_lower or 'high-risk' in query_lower:
+            criteria['apol1_risk_level'] = 'high'
+        if any(phrase in query_lower for phrase in ['egfr below 30', 'egfr < 30', 'severe kidney']):
+            criteria['egfr_max'] = 30
+        elif any(phrase in query_lower for phrase in ['egfr below 45', 'egfr < 45', 'moderate kidney']):
+            criteria['egfr_max'] = 45
+        
+        if criteria:
+            try:
+                patient_ids = enhanced_kg.query_cohort_by_criteria(criteria)
+                insights.append(f"Traditional Analysis: Found {len(patient_ids)} patients matching criteria {list(criteria.keys())}")
+            except Exception as e:
+                insights.append(f"Analysis error: {str(e)}")
+    
+    # Add general dataset insights for research summaries
+    if any(word in query_lower for word in ['summary', 'overview', 'research', 'dataset']):
         try:
             kg_stats = enhanced_kg.get_graph_statistics()
-            insights.append(f"Clinical knowledge graph contains {kg_stats['total_entities']} entities across {kg_stats['total_patients']} patients.")
+            insights.append(f"Dataset Overview: {kg_stats['total_entities']} entities, {kg_stats['total_patients']} patients")
             
             if kg_stats['entity_counts_by_type']:
-                entity_summary = ', '.join([f"{etype}: {count}" for etype, count in kg_stats['entity_counts_by_type'].items()])
+                entity_summary = ', '.join([f"{etype}: {count}" for etype, count in list(kg_stats['entity_counts_by_type'].items())[:4]])
                 insights.append(f"Entity distribution: {entity_summary}")
         except Exception:
             pass
