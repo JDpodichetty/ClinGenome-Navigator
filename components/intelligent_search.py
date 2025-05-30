@@ -137,7 +137,11 @@ IMPORTANT: Use the exact patient count of {patient_count} in your response. Do n
                             original_insights = llm_response.get("key_insights", "")
                             enhanced_insights = '\n'.join(kg_key_points[:4])
                             if original_insights:
-                                enhanced_insights += '\n' + original_insights
+                                # Handle both string and list formats
+                                if isinstance(original_insights, list):
+                                    enhanced_insights += '\n' + '\n'.join(original_insights)
+                                else:
+                                    enhanced_insights += '\n' + str(original_insights)
                             llm_response["key_insights"] = enhanced_insights
                 else:
                     # Combine traditional context with knowledge graph insights for general queries
