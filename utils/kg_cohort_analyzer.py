@@ -174,8 +174,8 @@ class KGCohortAnalyzer:
             'total_patients': len(predisposition_patients)
         }
     
-    def find_multi_mutation_high_egfr_cohort(self, egfr_threshold: float = 60) -> Dict[str, Any]:
-        """Find patients with multiple gene mutations but preserved kidney function (high eGFR)"""
+    def find_multi_mutation_egfr_cohort(self, egfr_threshold: float = 60, high_egfr: bool = True) -> Dict[str, Any]:
+        """Find patients with multiple gene mutations and specific eGFR patterns"""
         
         # Find patients with 2+ gene mutations
         self.cursor.execute('''
@@ -188,17 +188,18 @@ class KGCohortAnalyzer:
         multi_mutation_data = self.cursor.fetchall()
         multi_mutation_patients = set([row[0] for row in multi_mutation_data])
         
-        # Find patients with high eGFR
-        self.cursor.execute('''
+        # Find patients with specified eGFR pattern
+        operator = '>' if high_egfr else '<'
+        self.cursor.execute(f'''
             SELECT patient_id, entity_value
             FROM clinical_entities 
-            WHERE entity_name = 'eGFR' AND CAST(entity_value AS REAL) > ?
+            WHERE entity_name = 'eGFR' AND CAST(entity_value AS REAL) {operator} ?
         ''', (egfr_threshold,))
-        high_egfr_data = self.cursor.fetchall()
-        high_egfr_patients = set([row[0] for row in high_egfr_data])
+        egfr_data = self.cursor.fetchall()
+        egfr_patients = set([row[0] for row in egfr_data])
         
         # Find intersection
-        target_cohort = multi_mutation_patients & high_egfr_patients
+        target_cohort = multi_mutation_patients & egfr_patients
         
         # Get detailed mutation counts for the cohort
         mutation_details = {}
@@ -206,15 +207,28 @@ class KGCohortAnalyzer:
             if patient_id in target_cohort:
                 mutation_details[patient_id] = count
         
+        egfr_type = 'high' if high_egfr else 'low'
+        comparison = 'above' if high_egfr else 'below'
+        
         return {
-            'cohort_type': 'multi_mutation_high_egfr',
+            'cohort_type': f'multi_mutation_{egfr_type}_egfr',
             'patient_ids': list(target_cohort),
             'total_patients': len(target_cohort),
             'multi_mutation_total': len(multi_mutation_patients),
-            'high_egfr_total': len(high_egfr_patients),
+            f'{egfr_type}_egfr_total': len(egfr_patients),
             'egfr_threshold': egfr_threshold,
+            'egfr_type': egfr_type,
+            'comparison': comparison,
             'mutation_details': mutation_details
         }
+    
+    def find_multi_mutation_high_egfr_cohort(self, egfr_threshold: float = 60) -> Dict[str, Any]:
+        """Find patients with multiple gene mutations and high eGFR (preserved function)"""
+        return self.find_multi_mutation_egfr_cohort(egfr_threshold, high_egfr=True)
+    
+    def find_multi_mutation_low_egfr_cohort(self, egfr_threshold: float = 45) -> Dict[str, Any]:
+        """Find patients with multiple gene mutations and low eGFR (reduced function)"""
+        return self.find_multi_mutation_egfr_cohort(egfr_threshold, high_egfr=False)
     
     def find_complex_phenotype_cohort(self, criteria: Dict[str, Any]) -> Dict[str, Any]:
         """Find patients matching complex phenotypic patterns using multiple relationship types"""

@@ -322,9 +322,9 @@ def _process_query_with_knowledge_graph(query: str, enhanced_kg: EnhancedKnowled
     # Detect query patterns for knowledge graph-based cohort analysis
     kg_cohort_result = None
     
-    # Multi-mutation + high eGFR cohort analysis - enhanced pattern detection
+    # Multi-mutation + eGFR cohort analysis - enhanced pattern detection
     mutation_patterns = ['two or more mutations', 'multiple mutations', 'multi mutation', '2+ mutations', 'more than one mutation', 'two mutations', 'several mutations']
-    egfr_patterns = ['high egfr', 'elevated egfr', 'preserved kidney', 'good kidney function', 'egfr values', 'egfr levels']
+    egfr_patterns = ['high egfr', 'elevated egfr', 'preserved kidney', 'good kidney function', 'egfr values', 'egfr levels', 'low egfr', 'reduced egfr', 'kidney dysfunction']
     
     has_mutation_pattern = any(phrase in query_lower for phrase in mutation_patterns)
     has_egfr_pattern = any(phrase in query_lower for phrase in egfr_patterns)
@@ -332,13 +332,27 @@ def _process_query_with_knowledge_graph(query: str, enhanced_kg: EnhancedKnowled
     
     if has_mutation_pattern or has_egfr_pattern or has_combined_pattern:
         try:
-            egfr_threshold = 70 if 'high' in query_lower else 60
-            kg_cohort_result = kg_analyzer.find_multi_mutation_high_egfr_cohort(egfr_threshold)
-            insights.append(f"🧬 Knowledge Graph Multi-Mutation + High eGFR Analysis:")
-            insights.append(f"Found {kg_cohort_result['total_patients']} patients with both 2+ mutations AND high eGFR")
+            # Detect whether query is for high or low eGFR
+            is_low_egfr = any(phrase in query_lower for phrase in ['low egfr', 'reduced egfr', 'kidney dysfunction', 'low'])
+            is_high_egfr = any(phrase in query_lower for phrase in ['high egfr', 'elevated egfr', 'preserved kidney', 'good kidney', 'high'])
+            
+            if is_low_egfr:
+                egfr_threshold = 45
+                kg_cohort_result = kg_analyzer.find_multi_mutation_low_egfr_cohort(egfr_threshold)
+                egfr_description = f"low eGFR (<{egfr_threshold})"
+            else:
+                egfr_threshold = 70 if is_high_egfr else 60
+                kg_cohort_result = kg_analyzer.find_multi_mutation_high_egfr_cohort(egfr_threshold)
+                egfr_description = f"high eGFR (>{egfr_threshold})"
+            
+            egfr_type = kg_cohort_result.get('egfr_type', 'high')
+            egfr_total_key = f"{egfr_type}_egfr_total"
+            
+            insights.append(f"🧬 Knowledge Graph Multi-Mutation + {egfr_type.title()} eGFR Analysis:")
+            insights.append(f"Found {kg_cohort_result['total_patients']} patients with both 2+ mutations AND {egfr_description}")
             insights.append(f"Breakdown:")
             insights.append(f"• Patients with 2+ mutations total: {kg_cohort_result['multi_mutation_total']}")
-            insights.append(f"• Patients with high eGFR (>{egfr_threshold}) total: {kg_cohort_result['high_egfr_total']}")
+            insights.append(f"• Patients with {egfr_description} total: {kg_cohort_result.get(egfr_total_key, 0)}")
             insights.append(f"• Patients meeting BOTH criteria: {kg_cohort_result['total_patients']}")
             
             # Add mutation breakdown
@@ -348,6 +362,12 @@ def _process_query_with_knowledge_graph(query: str, enhanced_kg: EnhancedKnowled
                 max_mutations = max(mutation_counts)
                 insights.append(f"• Average mutations per patient in cohort: {avg_mutations:.1f}")
                 insights.append(f"• Maximum mutations in single patient: {max_mutations}")
+            
+            # Add clinical significance
+            if is_low_egfr:
+                insights.append(f"• Clinical significance: This cohort shows expected functional decline from genetic burden")
+            else:
+                insights.append(f"• Clinical significance: This cohort shows preserved function despite genetic risk")
             
             # Force return early to prevent fallback
             return '\n'.join(insights)
