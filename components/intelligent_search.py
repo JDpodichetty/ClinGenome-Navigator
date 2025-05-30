@@ -166,7 +166,9 @@ IMPORTANT: Use the exact patient count of {patient_count} in your response. Do n
                             <h4 style="color: #1f77b4; margin: 0 0 0.5rem 0;">Key Insights</h4>
                         """, unsafe_allow_html=True)
                         
-                        insights = llm_response.get("key_insights", [])
+                        insights = llm_response.get("key_insights", "")
+                        if isinstance(insights, str):
+                            insights = [line.strip() for line in insights.split('\n') if line.strip()]
                         for i, insight in enumerate(insights, 1):
                             st.markdown(f"**{i}.** {insight}")
                         
@@ -209,12 +211,38 @@ IMPORTANT: Use the exact patient count of {patient_count} in your response. Do n
                         
                         st.markdown("</div>", unsafe_allow_html=True)
 
-                    # Perform vector search to find relevant patients
-                    indices, scores = vector_search.search(
-                        query, top_k=1500, similarity_threshold=0.0)
+                    # Use knowledge graph results for precise patient filtering
+                    if enhanced_results and "🧬 Knowledge Graph" in enhanced_results:
+                        # Extract patient IDs from knowledge graph analysis
+                        import re
+                        patient_match = re.search(r'Found (\d+) patients', enhanced_results)
+                        if patient_match:
+                            # Get patient IDs from the knowledge graph analyzer
+                            kg_analyzer = KGCohortAnalyzer(enhanced_kg)
+                            
+                            # Determine which analysis was performed and get patient IDs
+                            query_lower = query.lower()
+                            is_low_egfr = any(phrase in query_lower for phrase in ['low egfr', 'reduced egfr', 'kidney dysfunction', 'low'])
+                            
+                            if is_low_egfr:
+                                kg_result = kg_analyzer.find_multi_mutation_low_egfr_cohort(45)
+                            else:
+                                kg_result = kg_analyzer.find_multi_mutation_high_egfr_cohort(60)
+                            
+                            patient_ids = kg_result.get('patient_ids', [])
+                            if patient_ids:
+                                # Filter dataframe to only include knowledge graph patients
+                                relevant_df = df[df['PatientID'].isin(patient_ids)].copy()
+                            else:
+                                relevant_df = df.iloc[0:0].copy()  # Empty dataframe
+                        else:
+                            relevant_df = df.iloc[0:0].copy()  # Empty dataframe
+                    else:
+                        # Fallback for general queries - use limited vector search
+                        indices, scores = vector_search.search(query, top_k=100, similarity_threshold=0.3)
+                        relevant_df = df.iloc[indices].copy() if indices else df.iloc[0:0].copy()
 
-                    if indices:
-                        relevant_df = df.iloc[indices].copy()
+                    if len(relevant_df) > 0:
 
                         # 1. MOVED: Cohort Analysis BEFORE Relevant Patients Found
                         cohort_analysis = llm_processor.analyze_patient_cohort(
