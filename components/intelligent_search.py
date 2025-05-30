@@ -322,23 +322,38 @@ def _process_query_with_knowledge_graph(query: str, enhanced_kg: EnhancedKnowled
     # Detect query patterns for knowledge graph-based cohort analysis
     kg_cohort_result = None
     
-    # Multi-mutation + high eGFR cohort analysis
-    if (any(phrase in query_lower for phrase in ['two or more mutations', 'multiple mutations', 'multi mutation', '2+ mutations', 'more than one mutation']) 
-        and any(phrase in query_lower for phrase in ['high egfr', 'elevated egfr', 'preserved kidney', 'good kidney function'])) or \
-       ('mutation' in query_lower and 'egfr' in query_lower and ('two' in query_lower or 'multiple' in query_lower or 'more' in query_lower)):
-        egfr_threshold = 70 if 'high' in query_lower else 60
-        kg_cohort_result = kg_analyzer.find_multi_mutation_high_egfr_cohort(egfr_threshold)
-        insights.append(f"Knowledge Graph Multi-Mutation + High eGFR Analysis: Found {kg_cohort_result['total_patients']} patients")
-        insights.append(f"- Patients with 2+ mutations: {kg_cohort_result['multi_mutation_total']}")
-        insights.append(f"- Patients with high eGFR (>{egfr_threshold}): {kg_cohort_result['high_egfr_total']}")
-        insights.append(f"- Intersection (both criteria): {kg_cohort_result['total_patients']}")
-        
-        # Add mutation breakdown
-        mutation_counts = list(kg_cohort_result['mutation_details'].values())
-        if mutation_counts:
-            avg_mutations = sum(mutation_counts) / len(mutation_counts)
-            max_mutations = max(mutation_counts)
-            insights.append(f"- Average mutations per patient: {avg_mutations:.1f}, Maximum: {max_mutations}")
+    # Multi-mutation + high eGFR cohort analysis - enhanced pattern detection
+    mutation_patterns = ['two or more mutations', 'multiple mutations', 'multi mutation', '2+ mutations', 'more than one mutation', 'two mutations', 'several mutations']
+    egfr_patterns = ['high egfr', 'elevated egfr', 'preserved kidney', 'good kidney function', 'egfr values', 'egfr levels']
+    
+    has_mutation_pattern = any(phrase in query_lower for phrase in mutation_patterns)
+    has_egfr_pattern = any(phrase in query_lower for phrase in egfr_patterns)
+    has_combined_pattern = ('mutation' in query_lower and 'egfr' in query_lower and ('two' in query_lower or 'multiple' in query_lower or 'more' in query_lower))
+    
+    if has_mutation_pattern or has_egfr_pattern or has_combined_pattern:
+        try:
+            egfr_threshold = 70 if 'high' in query_lower else 60
+            kg_cohort_result = kg_analyzer.find_multi_mutation_high_egfr_cohort(egfr_threshold)
+            insights.append(f"🧬 Knowledge Graph Multi-Mutation + High eGFR Analysis:")
+            insights.append(f"Found {kg_cohort_result['total_patients']} patients with both 2+ mutations AND high eGFR")
+            insights.append(f"Breakdown:")
+            insights.append(f"• Patients with 2+ mutations total: {kg_cohort_result['multi_mutation_total']}")
+            insights.append(f"• Patients with high eGFR (>{egfr_threshold}) total: {kg_cohort_result['high_egfr_total']}")
+            insights.append(f"• Patients meeting BOTH criteria: {kg_cohort_result['total_patients']}")
+            
+            # Add mutation breakdown
+            mutation_counts = list(kg_cohort_result['mutation_details'].values())
+            if mutation_counts:
+                avg_mutations = sum(mutation_counts) / len(mutation_counts)
+                max_mutations = max(mutation_counts)
+                insights.append(f"• Average mutations per patient in cohort: {avg_mutations:.1f}")
+                insights.append(f"• Maximum mutations in single patient: {max_mutations}")
+            
+            # Force return early to prevent fallback
+            return '\n'.join(insights)
+        except Exception as e:
+            insights.append(f"Knowledge graph analysis error: {str(e)}")
+            # Continue to fallback analysis
     
     # High-risk genetic cohort analysis
     elif any(phrase in query_lower for phrase in ['high risk', 'high-risk', 'genetic risk', 'apol1', 'gene mutation']):
