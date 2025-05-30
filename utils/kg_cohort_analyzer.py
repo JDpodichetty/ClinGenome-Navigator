@@ -174,11 +174,62 @@ class KGCohortAnalyzer:
             'total_patients': len(predisposition_patients)
         }
     
+    def find_multi_mutation_high_egfr_cohort(self, egfr_threshold: float = 60) -> Dict[str, Any]:
+        """Find patients with multiple gene mutations but preserved kidney function (high eGFR)"""
+        
+        # Find patients with 2+ gene mutations
+        self.cursor.execute('''
+            SELECT patient_id, COUNT(*) as mutation_count
+            FROM clinical_entities 
+            WHERE entity_type = 'gene_mutation' AND entity_value = 'Mut'
+            GROUP BY patient_id
+            HAVING COUNT(*) >= 2
+        ''')
+        multi_mutation_data = self.cursor.fetchall()
+        multi_mutation_patients = set([row[0] for row in multi_mutation_data])
+        
+        # Find patients with high eGFR
+        self.cursor.execute('''
+            SELECT patient_id, entity_value
+            FROM clinical_entities 
+            WHERE entity_name = 'eGFR' AND CAST(entity_value AS REAL) > ?
+        ''', (egfr_threshold,))
+        high_egfr_data = self.cursor.fetchall()
+        high_egfr_patients = set([row[0] for row in high_egfr_data])
+        
+        # Find intersection
+        target_cohort = multi_mutation_patients & high_egfr_patients
+        
+        # Get detailed mutation counts for the cohort
+        mutation_details = {}
+        for patient_id, count in multi_mutation_data:
+            if patient_id in target_cohort:
+                mutation_details[patient_id] = count
+        
+        return {
+            'cohort_type': 'multi_mutation_high_egfr',
+            'patient_ids': list(target_cohort),
+            'total_patients': len(target_cohort),
+            'multi_mutation_total': len(multi_mutation_patients),
+            'high_egfr_total': len(high_egfr_patients),
+            'egfr_threshold': egfr_threshold,
+            'mutation_details': mutation_details
+        }
+    
     def find_complex_phenotype_cohort(self, criteria: Dict[str, Any]) -> Dict[str, Any]:
         """Find patients matching complex phenotypic patterns using multiple relationship types"""
         
         candidate_patients = set()
         criteria_results = {}
+        
+        # Multi-mutation + high eGFR specific analysis
+        if criteria.get('multi_mutation_high_egfr'):
+            mutation_egfr_cohort = self.find_multi_mutation_high_egfr_cohort(
+                criteria.get('egfr_threshold', 60)
+            )
+            candidate_patients.update(mutation_egfr_cohort['patient_ids'])
+            criteria_results['multi_mutation_high_egfr'] = mutation_egfr_cohort['total_patients']
+            return mutation_egfr_cohort
         
         # Genetic criteria via relationships
         if criteria.get('genetic_risk'):
