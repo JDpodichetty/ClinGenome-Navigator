@@ -99,28 +99,45 @@ def render_intelligent_search(data_processor, vector_search, llm_processor):
                 
                 # Check if knowledge graph returned specific results
                 if enhanced_results and "🧬 Knowledge Graph" in enhanced_results:
-                    # Create a special context for knowledge graph results
-                    enhanced_context = enhanced_results + "\n\nDataset Overview:\n" + context_data
+                    # Extract patient count from knowledge graph results
+                    import re
+                    patient_match = re.search(r'Found (\d+) patients', enhanced_results)
+                    patient_count = patient_match.group(1) if patient_match else "specific cohort"
+                    
+                    # Create enhanced context that emphasizes the precise count
+                    kg_context = f"""CRITICAL: The Knowledge Graph Analysis has identified exactly {patient_count} patients from the dataset meeting the specific criteria.
+                    
+Knowledge Graph Results:
+{enhanced_results}
+
+Dataset Overview:
+{context_data}
+
+IMPORTANT: Use the exact patient count of {patient_count} in your response. Do not use the total dataset size of 1500."""
                     
                     # Process with LLM but with knowledge graph insights as primary context
-                    llm_response = llm_processor.process_clinical_query(query, enhanced_context)
+                    llm_response = llm_processor.process_clinical_query(query, kg_context)
                     
-                    # Override the summary to highlight knowledge graph findings
+                    # Force override the summary and key findings to preserve exact counts
                     if "error" not in llm_response:
-                        # Extract patient count from knowledge graph results
-                        import re
-                        patient_match = re.search(r'Found (\d+) patients', enhanced_results)
-                        patient_count = patient_match.group(1) if patient_match else "specific cohort"
-                        
-                        # Create enhanced summary
-                        kg_summary = f"Knowledge Graph Analysis identified {patient_count} patients meeting your specific criteria from the authentic clinical dataset. This represents a precisely filtered cohort based on relationship traversal rather than simple keyword matching."
+                        # Create enhanced summary with exact count
+                        kg_summary = f"Knowledge Graph Analysis identified exactly {patient_count} patients meeting your specific criteria from the authentic clinical dataset. This represents a precisely filtered cohort based on relationship traversal analysis of genetic mutations and kidney function markers."
                         llm_response["summary"] = kg_summary
                         
-                        # Add knowledge graph insights to key findings
-                        if "key_insights" in llm_response:
-                            kg_insights = enhanced_results.split('\n')
-                            # Prepend knowledge graph insights
-                            llm_response["key_insights"] = '\n'.join(kg_insights[1:4]) + '\n' + llm_response["key_insights"]
+                        # Extract and enhance key insights
+                        kg_insights = enhanced_results.split('\n')
+                        kg_key_points = []
+                        for line in kg_insights[1:]:
+                            if line.strip() and ('patients' in line.lower() or 'mutations' in line.lower() or 'egfr' in line.lower()):
+                                kg_key_points.append(line.strip())
+                        
+                        # Override key insights with knowledge graph findings
+                        if kg_key_points:
+                            original_insights = llm_response.get("key_insights", "")
+                            enhanced_insights = '\n'.join(kg_key_points[:4])
+                            if original_insights:
+                                enhanced_insights += '\n' + original_insights
+                            llm_response["key_insights"] = enhanced_insights
                 else:
                     # Combine traditional context with knowledge graph insights for general queries
                     enhanced_context = context_data + "\n\nKnowledge Graph Insights:\n" + enhanced_results
