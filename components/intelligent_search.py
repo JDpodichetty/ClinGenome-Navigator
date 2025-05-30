@@ -97,7 +97,17 @@ def render_intelligent_search(data_processor, vector_search, llm_processor):
                 # Enhanced query processing with knowledge graph
                 enhanced_results = _process_query_with_knowledge_graph(query, enhanced_kg, df)
                 
-                # Combine traditional context with knowledge graph insights
+                # Check if knowledge graph returned specific results
+                if enhanced_results and "🧬 Knowledge Graph" in enhanced_results:
+                    # Display knowledge graph results directly without LLM processing
+                    st.markdown("---")
+                    st.markdown("### 🧬 Knowledge Graph Analysis Results")
+                    st.success(enhanced_results)
+                    
+                    # Skip LLM processing to preserve precise results
+                    return
+                
+                # Combine traditional context with knowledge graph insights for general queries
                 enhanced_context = context_data + "\n\nKnowledge Graph Insights:\n" + enhanced_results
 
                 # Process query with LLM using enhanced context
