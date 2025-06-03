@@ -53,7 +53,7 @@ Thumbs.db
 *.csv
 !sample_data.csv
 
-# Attached assets and uploads
+# Attached assets and data
 attached_assets/
 
 # Temporary files
