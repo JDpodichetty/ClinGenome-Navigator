@@ -2,7 +2,7 @@ modules = ["python-3.11"]
 
 [nix]
 channel = "stable-24_05"
-packages = ["glibcLocales", "neo4j"]
+packages = ["glibcLocales"]
 
 [deployment]
 deploymentTarget = "autoscale"

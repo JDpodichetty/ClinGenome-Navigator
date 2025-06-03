@@ -3,8 +3,6 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 from typing import Dict, List
-from utils.enhanced_knowledge_graph import EnhancedKnowledgeGraph
-from utils.kg_cohort_analyzer import KGCohortAnalyzer
 import json
 
 
@@ -20,21 +18,9 @@ def render_intelligent_search(data_processor, vector_search, llm_processor):
 
     df = data_processor.get_data()
 
-    # Initialize enhanced knowledge graph for improved query processing
-    if 'enhanced_kg' not in st.session_state:
-        with st.spinner("Building enhanced knowledge graph from clinical notes..."):
-            enhanced_kg = EnhancedKnowledgeGraph()
-            kg_stats = enhanced_kg.build_knowledge_graph(df)
-            st.session_state.enhanced_kg = enhanced_kg
-            st.session_state.enhanced_kg_stats = kg_stats
-            st.session_state.kg_cohort_analyzer = KGCohortAnalyzer(enhanced_kg)
-    
-    enhanced_kg = st.session_state.enhanced_kg
-    kg_analyzer = st.session_state.kg_cohort_analyzer
-
     # Description of the tool
     st.markdown("""
-    **ClinGenome Navigator** analyzes authentic clinical genomic data for kidney disease research with focus on chronic kidney disease (CKD) and genetic variants. 
+    **ClinGenome Navigator** analyzes a synthetic clinico genomic data for kidney disease research with focus on chronic kidney disease (CKD) and genetic variants. 
     This platform combines patient demographics, genetic markers (APOL1, NPHS1, NPHS2), and clinical notes to generate insights and identify research opportunities for sponsors. 
     Use natural language queries to explore patterns, analyze cohorts, and extract insights from 1,500 patient records for pharmaceutical research and clinical trial planning.
     """)
@@ -87,68 +73,16 @@ def render_intelligent_search(data_processor, vector_search, llm_processor):
             query = "Generate a comprehensive research summary of this clinical dataset"
             search_clicked = True
 
-    # Process query with LLM and enhanced knowledge graph
+    # Process query with LLM
     if search_clicked and query.strip():
         with st.spinner("🧠 Analyzing your query with advanced AI..."):
             try:
                 # Create context from the dataset
                 context_data = _create_dataset_context(df)
-                
-                # Enhanced query processing with knowledge graph
-                enhanced_kg = st.session_state.enhanced_kg
-                enhanced_results = _process_query_with_knowledge_graph(query, enhanced_kg, df)
-                
-                # Check if knowledge graph returned specific results
-                if enhanced_results and "🧬 Knowledge Graph" in enhanced_results:
-                    # Extract patient count from knowledge graph results
-                    import re
-                    patient_match = re.search(r'Found (\d+) patients', enhanced_results)
-                    patient_count = patient_match.group(1) if patient_match else "specific cohort"
-                    
-                    # Create enhanced context that emphasizes the precise count
-                    kg_context = f"""CRITICAL: The Knowledge Graph Analysis has identified exactly {patient_count} patients from the dataset meeting the specific criteria.
-                    
-Knowledge Graph Results:
-{enhanced_results}
 
-Dataset Overview:
-{context_data}
-
-IMPORTANT: Use the exact patient count of {patient_count} in your response. Do not use the total dataset size of 1500."""
-                    
-                    # Process with LLM but with knowledge graph insights as primary context
-                    llm_response = llm_processor.process_clinical_query(query, kg_context)
-                    
-                    # Force override the summary and key findings to preserve exact counts
-                    if "error" not in llm_response:
-                        # Create enhanced summary with exact count
-                        kg_summary = f"Knowledge Graph Analysis identified exactly {patient_count} patients meeting your specific criteria from the authentic clinical dataset. This represents a precisely filtered cohort based on relationship traversal analysis of genetic mutations and kidney function markers."
-                        llm_response["summary"] = kg_summary
-                        
-                        # Extract and enhance key insights
-                        kg_insights = enhanced_results.split('\n')
-                        kg_key_points = []
-                        for line in kg_insights[1:]:
-                            if line.strip() and ('patients' in line.lower() or 'mutations' in line.lower() or 'egfr' in line.lower()):
-                                kg_key_points.append(line.strip())
-                        
-                        # Override key insights with knowledge graph findings
-                        if kg_key_points:
-                            original_insights = llm_response.get("key_insights", "")
-                            enhanced_insights = '\n'.join(kg_key_points[:4])
-                            if original_insights:
-                                # Handle both string and list formats
-                                if isinstance(original_insights, list):
-                                    enhanced_insights += '\n' + '\n'.join(original_insights)
-                                else:
-                                    enhanced_insights += '\n' + str(original_insights)
-                            llm_response["key_insights"] = enhanced_insights
-                else:
-                    # Combine traditional context with knowledge graph insights for general queries
-                    enhanced_context = context_data + "\n\nKnowledge Graph Insights:\n" + enhanced_results
-                    
-                    # Process query with LLM using enhanced context
-                    llm_response = llm_processor.process_clinical_query(query, enhanced_context)
+                # Process query with LLM
+                llm_response = llm_processor.process_clinical_query(
+                    query, context_data)
 
                 if "error" not in llm_response:
                     st.markdown("---")
@@ -171,9 +105,7 @@ IMPORTANT: Use the exact patient count of {patient_count} in your response. Do n
                             <h4 style="color: #1f77b4; margin: 0 0 0.5rem 0;">Key Insights</h4>
                         """, unsafe_allow_html=True)
                         
-                        insights = llm_response.get("key_insights", "")
-                        if isinstance(insights, str):
-                            insights = [line.strip() for line in insights.split('\n') if line.strip()]
+                        insights = llm_response.get("key_insights", [])
                         for i, insight in enumerate(insights, 1):
                             st.markdown(f"**{i}.** {insight}")
                         
@@ -216,43 +148,12 @@ IMPORTANT: Use the exact patient count of {patient_count} in your response. Do n
                         
                         st.markdown("</div>", unsafe_allow_html=True)
 
-                    # Use knowledge graph results for precise patient filtering
-                    if enhanced_results and "🧬 Knowledge Graph" in enhanced_results:
-                        # Get patient IDs from the knowledge graph analyzer
-                        kg_analyzer = st.session_state.kg_cohort_analyzer
-                        
-                        # Determine which analysis was performed and get patient IDs
-                        query_lower = query.lower()
-                        mutation_patterns = ['two or more mutations', 'multiple mutations', 'multi mutation', '2+ mutations', 'more than one mutation', 'two mutations', 'several mutations']
-                        egfr_patterns = ['high egfr', 'elevated egfr', 'preserved kidney', 'good kidney function', 'egfr values', 'egfr levels', 'low egfr', 'reduced egfr', 'kidney dysfunction']
-                        
-                        has_mutation_pattern = any(phrase in query_lower for phrase in mutation_patterns)
-                        has_egfr_pattern = any(phrase in query_lower for phrase in egfr_patterns)
-                        has_combined_pattern = ('mutation' in query_lower and 'egfr' in query_lower and ('two' in query_lower or 'multiple' in query_lower or 'more' in query_lower))
-                        
-                        if has_mutation_pattern or has_egfr_pattern or has_combined_pattern:
-                            is_low_egfr = any(phrase in query_lower for phrase in ['low egfr', 'reduced egfr', 'kidney dysfunction', 'low'])
-                            
-                            if is_low_egfr:
-                                kg_result = kg_analyzer.find_multi_mutation_low_egfr_cohort(45)
-                            else:
-                                kg_result = kg_analyzer.find_multi_mutation_high_egfr_cohort(60)
-                            
-                            patient_ids = kg_result.get('patient_ids', [])
-                            if patient_ids:
-                                # Filter dataframe to only include knowledge graph patients
-                                relevant_df = df[df['PatientID'].isin(patient_ids)].copy()
-                            else:
-                                relevant_df = df.iloc[0:0].copy()
-                        else:
-                            # For other knowledge graph queries
-                            relevant_df = df.iloc[:100].copy()  # Limited fallback
-                    else:
-                        # Fallback for general queries - use limited vector search
-                        indices, scores = vector_search.search(query, top_k=100, similarity_threshold=0.3)
-                        relevant_df = df.iloc[indices].copy() if indices else df.iloc[0:0].copy()
+                    # Perform vector search to find relevant patients
+                    indices, scores = vector_search.search(
+                        query, top_k=1500, similarity_threshold=0.0)
 
-                    if len(relevant_df) > 0:
+                    if indices:
+                        relevant_df = df.iloc[indices].copy()
 
                         # 1. MOVED: Cohort Analysis BEFORE Relevant Patients Found
                         cohort_analysis = llm_processor.analyze_patient_cohort(
@@ -388,159 +289,6 @@ IMPORTANT: Use the exact patient count of {patient_count} in your response. Do n
             except Exception as e:
                 st.error(f"Error processing query: {str(e)}")
 
-
-def _process_query_with_knowledge_graph(query: str, enhanced_kg: EnhancedKnowledgeGraph, df: pd.DataFrame) -> str:
-    """Process query using knowledge graph relationship traversal for sophisticated cohort analysis"""
-    
-    query_lower = query.lower()
-    insights = []
-    
-    # Initialize knowledge graph cohort analyzer
-    kg_analyzer = KGCohortAnalyzer(enhanced_kg)
-    
-    # Detect query patterns for knowledge graph-based cohort analysis
-    kg_cohort_result = None
-    
-    # Multi-mutation + eGFR cohort analysis - enhanced pattern detection
-    mutation_patterns = ['two or more mutations', 'multiple mutations', 'multi mutation', '2+ mutations', 'more than one mutation', 'two mutations', 'several mutations']
-    egfr_patterns = ['high egfr', 'elevated egfr', 'preserved kidney', 'good kidney function', 'egfr values', 'egfr levels', 'low egfr', 'reduced egfr', 'kidney dysfunction']
-    
-    has_mutation_pattern = any(phrase in query_lower for phrase in mutation_patterns)
-    has_egfr_pattern = any(phrase in query_lower for phrase in egfr_patterns)
-    has_combined_pattern = ('mutation' in query_lower and 'egfr' in query_lower and ('two' in query_lower or 'multiple' in query_lower or 'more' in query_lower))
-    
-    if has_mutation_pattern or has_egfr_pattern or has_combined_pattern:
-        try:
-            # Detect whether query is for high or low eGFR
-            is_low_egfr = any(phrase in query_lower for phrase in ['low egfr', 'reduced egfr', 'kidney dysfunction', 'low'])
-            is_high_egfr = any(phrase in query_lower for phrase in ['high egfr', 'elevated egfr', 'preserved kidney', 'good kidney', 'high'])
-            
-            if is_low_egfr:
-                egfr_threshold = 45
-                kg_cohort_result = kg_analyzer.find_multi_mutation_low_egfr_cohort(egfr_threshold)
-                egfr_description = f"low eGFR (<{egfr_threshold})"
-            else:
-                egfr_threshold = 70 if is_high_egfr else 60
-                kg_cohort_result = kg_analyzer.find_multi_mutation_high_egfr_cohort(egfr_threshold)
-                egfr_description = f"high eGFR (>{egfr_threshold})"
-            
-            egfr_type = kg_cohort_result.get('egfr_type', 'high')
-            egfr_total_key = f"{egfr_type}_egfr_total"
-            
-            insights.append(f"🧬 Knowledge Graph Multi-Mutation + {egfr_type.title()} eGFR Analysis:")
-            insights.append(f"Found {kg_cohort_result['total_patients']} patients with both 2+ mutations AND {egfr_description}")
-            insights.append(f"Breakdown:")
-            insights.append(f"• Patients with 2+ mutations total: {kg_cohort_result['multi_mutation_total']}")
-            insights.append(f"• Patients with {egfr_description} total: {kg_cohort_result.get(egfr_total_key, 0)}")
-            insights.append(f"• Patients meeting BOTH criteria: {kg_cohort_result['total_patients']}")
-            
-            # Add mutation breakdown
-            mutation_counts = list(kg_cohort_result['mutation_details'].values())
-            if mutation_counts:
-                avg_mutations = sum(mutation_counts) / len(mutation_counts)
-                max_mutations = max(mutation_counts)
-                insights.append(f"• Average mutations per patient in cohort: {avg_mutations:.1f}")
-                insights.append(f"• Maximum mutations in single patient: {max_mutations}")
-            
-            # Add clinical significance
-            if is_low_egfr:
-                insights.append(f"• Clinical significance: This cohort shows expected functional decline from genetic burden")
-            else:
-                insights.append(f"• Clinical significance: This cohort shows preserved function despite genetic risk")
-            
-            # Force return early to prevent fallback
-            return '\n'.join(insights)
-        except Exception as e:
-            insights.append(f"Knowledge graph analysis error: {str(e)}")
-            # Continue to fallback analysis
-    
-    # High-risk genetic cohort analysis
-    elif any(phrase in query_lower for phrase in ['high risk', 'high-risk', 'genetic risk', 'apol1', 'gene mutation']):
-        kg_cohort_result = kg_analyzer.find_high_risk_genetic_cohort()
-        insights.append(f"Knowledge Graph Genetic Analysis: Found {kg_cohort_result['total_patients']} high-risk patients")
-        insights.append(f"- APOL1 variant patients: {kg_cohort_result['apol1_patients']}")
-        insights.append(f"- Gene mutation patients: {kg_cohort_result['mutation_patients']}")
-    
-    # Kidney dysfunction progression analysis
-    elif any(phrase in query_lower for phrase in ['kidney dysfunction', 'kidney failure', 'egfr', 'creatinine', 'progression']):
-        egfr_threshold = 30 if 'severe' in query_lower or 'failure' in query_lower else 45
-        kg_cohort_result = kg_analyzer.find_kidney_dysfunction_progression_cohort(egfr_threshold)
-        insights.append(f"Knowledge Graph Kidney Analysis: Found {kg_cohort_result['total_patients']} patients with dysfunction patterns")
-        insights.append(f"- Lab-based dysfunction: {kg_cohort_result['lab_dysfunction']} patients")
-        insights.append(f"- Symptom-based indicators: {kg_cohort_result['symptom_based']} patients")
-        insights.append(f"- Edema-related cases: {kg_cohort_result['edema_based']} patients")
-    
-    # Genetic-lab correlation analysis
-    elif any(phrase in query_lower for phrase in ['correlation', 'genetic lab', 'variant effect', 'mutation impact']):
-        kg_cohort_result = kg_analyzer.find_genetic_lab_correlation_cohort()
-        insights.append(f"Knowledge Graph Correlation Analysis: Found {kg_cohort_result['total_patients']} patients with genetic-lab correlations")
-        insights.append(f"- APOL1-creatinine correlations: {kg_cohort_result['apol1_creatinine']} patients")
-        insights.append(f"- Mutation-creatinine elevations: {kg_cohort_result['mutation_creatinine']} patients")
-    
-    # Complex phenotype analysis
-    elif any(phrase in query_lower for phrase in ['complex', 'phenotype', 'multi-factor', 'combined']):
-        complex_criteria = {
-            'genetic_risk': True,
-            'kidney_dysfunction': True,
-            'genetic_lab_correlation': True,
-            'egfr_threshold': 45
-        }
-        kg_cohort_result = kg_analyzer.find_complex_phenotype_cohort(complex_criteria)
-        insights.append(f"Knowledge Graph Complex Phenotype Analysis: Found {kg_cohort_result['total_patients']} patients")
-        insights.append(f"Criteria breakdown: {kg_cohort_result['criteria_breakdown']}")
-    
-    # High-strength relationship analysis
-    elif any(phrase in query_lower for phrase in ['strong', 'significant', 'high confidence', 'reliable']):
-        kg_cohort_result = kg_analyzer.analyze_relationship_strength_cohort(min_strength=0.9)
-        insights.append(f"Knowledge Graph High-Confidence Analysis: Found {kg_cohort_result['total_patients']} patients in strong relationships")
-        insights.append(f"Minimum relationship strength: {kg_cohort_result['min_strength_threshold']}")
-    
-    # If we found a cohort through knowledge graph analysis, add relationship summary
-    if kg_cohort_result and kg_cohort_result['patient_ids']:
-        relationship_summary = kg_analyzer.get_cohort_relationship_summary(kg_cohort_result['patient_ids'])
-        if relationship_summary:
-            insights.append(f"Relationship patterns in cohort:")
-            insights.append(f"- Total relationships: {relationship_summary['total_relationships']}")
-            insights.append(f"- Total entities: {relationship_summary['total_entities']}")
-            
-            # Top relationship types
-            top_relationships = list(relationship_summary['relationship_types'].items())[:3]
-            if top_relationships:
-                rel_summary = ', '.join([f"{rel}: {count}" for rel, count in top_relationships])
-                insights.append(f"- Top relationships: {rel_summary}")
-    
-    # Fallback to traditional criteria-based analysis if no KG patterns detected
-    if not kg_cohort_result:
-        criteria = {}
-        
-        # Parse traditional criteria
-        if 'high risk' in query_lower or 'high-risk' in query_lower:
-            criteria['apol1_risk_level'] = 'high'
-        if any(phrase in query_lower for phrase in ['egfr below 30', 'egfr < 30', 'severe kidney']):
-            criteria['egfr_max'] = 30
-        elif any(phrase in query_lower for phrase in ['egfr below 45', 'egfr < 45', 'moderate kidney']):
-            criteria['egfr_max'] = 45
-        
-        if criteria:
-            try:
-                patient_ids = enhanced_kg.query_cohort_by_criteria(criteria)
-                insights.append(f"Traditional Analysis: Found {len(patient_ids)} patients matching criteria {list(criteria.keys())}")
-            except Exception as e:
-                insights.append(f"Analysis error: {str(e)}")
-    
-    # Add general dataset insights for research summaries
-    if any(word in query_lower for word in ['summary', 'overview', 'research', 'dataset']):
-        try:
-            kg_stats = enhanced_kg.get_graph_statistics()
-            insights.append(f"Dataset Overview: {kg_stats['total_entities']} entities, {kg_stats['total_patients']} patients")
-            
-            if kg_stats['entity_counts_by_type']:
-                entity_summary = ', '.join([f"{etype}: {count}" for etype, count in list(kg_stats['entity_counts_by_type'].items())[:4]])
-                insights.append(f"Entity distribution: {entity_summary}")
-        except Exception:
-            pass
-    
-    return '\n'.join(insights) if insights else "No specific knowledge graph insights available for this query."
 
 def _create_dataset_context(df: pd.DataFrame) -> str:
     """Create context summary of the dataset for LLM processing"""

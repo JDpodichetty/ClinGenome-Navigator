@@ -35,9 +35,12 @@ class VectorSearch:
         else:
             self.texts = texts
         
-        # Build TF-IDF matrix
-        self.tfidf_matrix = self.vectorizer.fit_transform(self.texts)
-        print(f"Built search index with {len(self.texts)} documents")
+        if self.texts:
+            # Build TF-IDF matrix
+            self.tfidf_matrix = self.vectorizer.fit_transform(self.texts)
+            print(f"Built search index with {len(self.texts)} documents")
+        else:
+            raise ValueError("No texts available for indexing")
 
     def _create_texts_from_df(self, df: pd.DataFrame) -> List[str]:
         """Create searchable text representations from dataframe"""
@@ -46,40 +49,81 @@ class VectorSearch:
         for _, row in df.iterrows():
             text_parts = []
             
-            # Demographics
-            if pd.notna(row.get('Age')):
-                text_parts.append(f"age {row['Age']}")
-            if pd.notna(row.get('Sex')):
-                text_parts.append(f"{row['Sex']} patient")
-            if pd.notna(row.get('Ethnicity')):
-                text_parts.append(f"{row['Ethnicity']} ethnicity")
+            # Patient demographics
+            if 'Age' in df.columns:
+                text_parts.append(f"Patient age {row.get('Age', 'unknown')}")
             
-            # Genetic variants
-            if pd.notna(row.get('APOL1_Variant')):
-                text_parts.append(f"APOL1 {row['APOL1_Variant']}")
+            if 'Sex' in df.columns:
+                sex = row.get('Sex', '')
+                if sex == 'M':
+                    text_parts.append("Male patient")
+                elif sex == 'F':
+                    text_parts.append("Female patient")
             
-            # Gene mutations
-            gene_cols = ['NPHS1', 'NPHS2', 'WT1', 'COL4A3', 'UMOD']
-            for gene in gene_cols:
-                if pd.notna(row.get(gene)):
-                    if row[gene] == 'Mut':
-                        text_parts.append(f"{gene} mutation")
+            if 'Ethnicity' in df.columns:
+                ethnicity = row.get('Ethnicity', '')
+                if ethnicity:
+                    text_parts.append(f"{ethnicity} ethnicity")
+            
+            # Clinical information
+            if 'Diagnosis' in df.columns:
+                diagnosis = row.get('Diagnosis', '')
+                if diagnosis:
+                    text_parts.append(f"diagnosed with {diagnosis}")
+            
+            if 'eGFR' in df.columns:
+                egfr = row.get('eGFR', 0)
+                if egfr:
+                    text_parts.append(f"eGFR {egfr}")
+                    if egfr < 30:
+                        text_parts.append("severe kidney dysfunction")
+                    elif egfr < 60:
+                        text_parts.append("moderate kidney dysfunction")
                     else:
-                        text_parts.append(f"{gene} wild-type")
+                        text_parts.append("normal kidney function")
             
-            # Clinical data
-            if pd.notna(row.get('eGFR')):
-                text_parts.append(f"eGFR {row['eGFR']}")
-            if pd.notna(row.get('Creatinine')):
-                text_parts.append(f"creatinine {row['Creatinine']}")
-            if pd.notna(row.get('Diagnosis')):
-                text_parts.append(f"diagnosis {row['Diagnosis']}")
-            if pd.notna(row.get('Medications')):
-                text_parts.append(f"medications {row['Medications']}")
-            if pd.notna(row.get('Eligible_For_Trial')):
-                text_parts.append(f"trial eligible {row['Eligible_For_Trial']}")
-            if pd.notna(row.get('Clinical_Notes')):
-                text_parts.append(f"notes {row['Clinical_Notes']}")
+            if 'Creatinine' in df.columns:
+                creatinine = row.get('Creatinine', 0)
+                if creatinine:
+                    text_parts.append(f"creatinine {creatinine}")
+            
+            # Genetic information
+            if 'APOL1_Variant' in df.columns:
+                apol1_variant = row.get('APOL1_Variant', '')
+                if apol1_variant:
+                    text_parts.append(f"APOL1 variant {apol1_variant}")
+                    if apol1_variant in ['G1/G2', 'G1/G1', 'G2/G2']:
+                        text_parts.append("high-risk APOL1 mutation")
+            
+            # Individual genetic markers
+            genetic_cols = ['APOL1', 'NPHS1', 'NPHS2', 'WT1', 'UMOD', 'COL4A3']
+            for col in genetic_cols:
+                if col in df.columns:
+                    value = row.get(col, '')
+                    if value == 'Mut':
+                        text_parts.append(f"{col} mutation")
+                    elif value == 'WT':
+                        text_parts.append(f"{col} wild type")
+            
+            # Medications
+            if 'Medications' in df.columns:
+                medications = row.get('Medications', '')
+                if medications and medications != 'None':
+                    text_parts.append(f"medications {medications}")
+            
+            # Trial eligibility
+            if 'Eligible_For_Trial' in df.columns:
+                eligible = row.get('Eligible_For_Trial', '')
+                if eligible == 'Yes':
+                    text_parts.append("eligible for clinical trials")
+                elif eligible == 'No':
+                    text_parts.append("not eligible for clinical trials")
+            
+            # Clinical notes
+            if 'Clinical_Notes' in df.columns:
+                notes = row.get('Clinical_Notes', '')
+                if notes:
+                    text_parts.append(notes)
             
             texts.append(" ".join(text_parts))
         
@@ -88,329 +132,508 @@ class VectorSearch:
     def search(self, query: str, top_k: int = 10, similarity_threshold: float = 0.0) -> Tuple[List[int], List[float]]:
         """Perform semantic search with enhanced filtering"""
         if self.tfidf_matrix is None:
-            raise ValueError("Index not built. Call build_index first.")
+            raise ValueError("Index not built. Call build_index() first.")
         
-        query_lower = query.lower()
-        filtered_df = self.df.copy()
+        # Apply numerical filters first
+        filtered_indices = self._apply_numerical_filters(query)
         
-        # Apply direct filtering first
-        filtered_indices = self._apply_numerical_filters(query_lower)
+        if filtered_indices is not None and len(filtered_indices) == 0:
+            return [], []
         
+        # Transform query using the same vectorizer
+        query_vector = self.vectorizer.transform([query.lower()])
+        
+        # Calculate similarities
         if filtered_indices is not None:
-            return filtered_indices, [1.0] * len(filtered_indices)
+            # Only calculate similarities for filtered indices
+            subset_matrix = self.tfidf_matrix[filtered_indices]
+            similarities = cosine_similarity(query_vector, subset_matrix).flatten()
+            
+            # Create (similarity, original_index) pairs
+            sim_idx_pairs = [(similarities[i], filtered_indices[i]) for i in range(len(filtered_indices))]
+        else:
+            # Calculate similarities for all documents
+            similarities = cosine_similarity(query_vector, self.tfidf_matrix).flatten()
+            sim_idx_pairs = [(similarities[i], i) for i in range(len(similarities))]
         
-        # Fallback to TF-IDF semantic search
-        query_vector = self.vectorizer.transform([query])
-        similarities = cosine_similarity(query_vector, self.tfidf_matrix)[0]
+        # Filter by similarity threshold and sort
+        filtered_pairs = [(sim, idx) for sim, idx in sim_idx_pairs if sim >= similarity_threshold]
+        filtered_pairs.sort(reverse=True, key=lambda x: x[0])
         
-        # Get top results above threshold
-        valid_indices = np.where(similarities >= similarity_threshold)[0]
-        sorted_indices = valid_indices[np.argsort(similarities[valid_indices])[::-1]]
+        # Extract top_k results
+        top_pairs = filtered_pairs[:top_k]
+        indices = [idx for _, idx in top_pairs]
+        scores = [sim for sim, _ in top_pairs]
         
-        top_indices = sorted_indices[:top_k].tolist()
-        top_scores = similarities[top_indices].tolist()
-        
-        return top_indices, top_scores
+        return indices, scores
 
     def _apply_numerical_filters(self, query: str) -> Optional[List[int]]:
         """Apply direct, simple filtering - no complex regex patterns"""
+        if self.df is None:
+            return None
+        
+        query_lower = query.lower()
         filtered_df = self.df.copy()
+        original_size = len(filtered_df)
         
-        # CKD Stage patterns
-        if 'ckd stage 3' in query:
-            if 'Diagnosis' in filtered_df.columns:
-                filtered_df = filtered_df[filtered_df['Diagnosis'] == 'CKD Stage 3']
+        # High-risk patients (direct keyword matching)
+        if any(keyword in query_lower for keyword in ['high risk', 'high-risk', 'immediate clinical attention', 'need immediate']):
+            if 'APOL1_Variant' in filtered_df.columns and 'eGFR' in filtered_df.columns and 'Diagnosis' in filtered_df.columns:
+                # High-risk APOL1 variants OR severe kidney dysfunction OR advanced CKD
+                high_risk_apol1 = filtered_df['APOL1_Variant'].isin(['G1/G1', 'G1/G2', 'G2/G2'])
+                severe_kidney = filtered_df['eGFR'] < 30
+                advanced_ckd = filtered_df['Diagnosis'].isin(['CKD Stage 4', 'CKD Stage 5'])
+                filtered_df = filtered_df[high_risk_apol1 | severe_kidney | advanced_ckd]
         
-        elif 'ckd stage 4' in query:
-            if 'Diagnosis' in filtered_df.columns:
-                filtered_df = filtered_df[filtered_df['Diagnosis'] == 'CKD Stage 4']
+        # Universal numerical filtering system
+        import re
+        numerical_cols = {'Age': 2, 'eGFR': 5, 'Creatinine': 0.2}  # column: margin for approximate searches
         
-        elif 'ckd stage 5' in query:
-            if 'Diagnosis' in filtered_df.columns:
-                filtered_df = filtered_df[filtered_df['Diagnosis'] == 'CKD Stage 5']
+        for col_name, margin in numerical_cols.items():
+            if col_name in filtered_df.columns:
+                col_lower = col_name.lower()
+                
+                # Above/greater than patterns
+                above_patterns = [
+                    rf'(?:above|over|greater than)\s+{col_lower}\s*(\d+(?:\.\d+)?)',
+                    rf'{col_lower}\s+(?:above|over|greater than)\s*(\d+(?:\.\d+)?)',
+                    rf'(?:above|over)\s+{col_lower}\s+(\d+(?:\.\d+)?)',
+                    rf'{col_lower}\s*>\s*(\d+(?:\.\d+)?)',
+                    rf'patients\s+over\s+(\d+(?:\.\d+)?)',
+                    rf'over\s+(\d+(?:\.\d+)?)'
+                ]
+                
+                # Below/less than patterns
+                below_patterns = [
+                    rf'(?:below|under|less than)\s+{col_lower}\s*(\d+(?:\.\d+)?)',
+                    rf'{col_lower}\s+(?:below|under|less than)\s*(\d+(?:\.\d+)?)',
+                    rf'(?:below|under)\s+{col_lower}\s+(\d+(?:\.\d+)?)',
+                    rf'{col_lower}\s*<\s*(\d+(?:\.\d+)?)',
+                    rf'below\s+the\s+{col_lower}\s+of\s+(\d+(?:\.\d+)?)'
+                ]
+                
+                # Near/about patterns
+                near_patterns = [
+                    rf'{col_lower}\s*(?:near|about|around|approximately)\s*(\d+(?:\.\d+)?)',
+                    rf'(?:near|about|around|approximately)\s+{col_lower}\s*(\d+(?:\.\d+)?)',
+                    rf'close\s+to.*?{col_lower}.*?(\d+(?:\.\d+)?)',
+                    rf'value\s+of\s+{col_lower}\s+of\s*(\d+(?:\.\d+)?)',
+                    rf'{col_lower}\s+(?:close\s+to|near)\s*(\d+(?:\.\d+)?)',
+                    rf'around\s+the\s+{col_lower}\s+of\s+(\d+(?:\.\d+)?)'
+                ]
+                
+                # Check for matches and apply filters
+                threshold = None
+                filter_type = None
+                
+                # Check above patterns
+                for pattern in above_patterns:
+                    match = re.search(pattern, query_lower)
+                    if match:
+                        threshold = float(match.group(1))
+                        filter_type = 'above'
+                        break
+                
+                # Check below patterns if no above match
+                if not threshold:
+                    for pattern in below_patterns:
+                        match = re.search(pattern, query_lower)
+                        if match:
+                            threshold = float(match.group(1))
+                            filter_type = 'below'
+                            break
+                
+                # Check near patterns if no above/below match
+                if not threshold:
+                    for pattern in near_patterns:
+                        match = re.search(pattern, query_lower)
+                        if match:
+                            threshold = float(match.group(1))
+                            filter_type = 'near'
+                            break
+                
+                # Apply the appropriate filter
+                if threshold is not None:
+                    if filter_type == 'above':
+                        filtered_df = filtered_df[filtered_df[col_name] > threshold]
+                    elif filter_type == 'below':
+                        filtered_df = filtered_df[filtered_df[col_name] < threshold]
+                    elif filter_type == 'near':
+                        filtered_df = filtered_df[
+                            (filtered_df[col_name] >= threshold - margin) & 
+                            (filtered_df[col_name] <= threshold + margin)
+                        ]
+                    break  # Exit loop once a filter is applied
         
-        # APOL1 mutation patterns
-        elif 'apol1 mutations' in query or 'patients with apol1' in query:
-            if 'APOL1_Variant' in filtered_df.columns:
-                # APOL1 mutations = any variant except G0/G0 (wild-type)
-                apol1_filtered = filtered_df[filtered_df['APOL1_Variant'] != 'G0/G0']
-                filtered_df = apol1_filtered
-        
-        # Wild-type APOL1 patterns
-        elif 'wild-type apol1' in query or 'wt apol1' in query or 'apol1 g0/g0' in query:
-            if 'APOL1_Variant' in filtered_df.columns:
-                filtered_df = filtered_df[filtered_df['APOL1_Variant'] == 'G0/G0']
-        
-        # Specific APOL1 variants
-        elif 'g1/g1' in query:
-            if 'APOL1_Variant' in filtered_df.columns:
-                apol1_filtered = filtered_df[filtered_df['APOL1_Variant'] == 'G1/G1']
-                filtered_df = apol1_filtered
-        
-        elif 'g1/g2' in query:
-            if 'APOL1_Variant' in filtered_df.columns:
-                apol1_filtered = filtered_df[filtered_df['APOL1_Variant'] == 'G1/G2']
-                filtered_df = apol1_filtered
-        
-        elif 'g2/g2' in query:
-            if 'APOL1_Variant' in filtered_df.columns:
-                filtered_df = filtered_df[filtered_df['APOL1_Variant'] == 'G2/G2']
-        
-        # Gene mutation patterns
-        elif 'nphs1 mutations' in query:
-            if 'NPHS1' in filtered_df.columns:
-                filtered_df = filtered_df[filtered_df['NPHS1'] == 'Mut']
-        
-        elif 'nphs2 mutations' in query:
-            if 'NPHS2' in filtered_df.columns:
-                filtered_df = filtered_df[filtered_df['NPHS2'] == 'Mut']
-        
-        elif 'wt1 mutations' in query:
-            if 'WT1' in filtered_df.columns:
-                filtered_df = filtered_df[filtered_df['WT1'] == 'Mut']
-        
-        elif 'col4a3 mutations' in query:
-            if 'COL4A3' in filtered_df.columns:
-                filtered_df = filtered_df[filtered_df['COL4A3'] == 'Mut']
-        
-        elif 'umod mutations' in query:
-            if 'UMOD' in filtered_df.columns:
-                filtered_df = filtered_df[filtered_df['UMOD'] == 'Mut']
-        
-        # Clinical condition patterns
-        elif 'diabetic nephropathy' in query:
-            if 'Diagnosis' in filtered_df.columns:
-                filtered_df = filtered_df[filtered_df['Diagnosis'] == 'Diabetic Nephropathy']
-        
-        elif 'nephrotic syndrome' in query:
-            if 'Diagnosis' in filtered_df.columns:
-                filtered_df = filtered_df[filtered_df['Diagnosis'] == 'Nephrotic Syndrome']
-        
-        # Laboratory value patterns with "between X and Y" support
-        elif 'egfr' in query and 'eGFR' in filtered_df.columns:
-            # Handle both "eGFR 60-90" and "eGFR between 60 and 90"
-            egfr_pattern = r'egfr\s+(?:between\s+)?(\d+)(?:[-–]\s*|(?:\s+and\s+))(\d+)'
-            match = re.search(egfr_pattern, query)
-            if match:
-                min_val, max_val = int(match.group(1)), int(match.group(2))
-                egfr_filtered = filtered_df[(filtered_df['eGFR'] >= min_val) & (filtered_df['eGFR'] <= max_val)]
-                filtered_df = egfr_filtered
-            else:
-                # Single value patterns
-                if 'egfr below' in query or 'egfr under' in query or 'egfr <' in query:
-                    egfr_match = re.search(r'(?:below|under|<)\s*(\d+)', query)
-                    if egfr_match:
-                        threshold = int(egfr_match.group(1))
-                        filtered_df = filtered_df[filtered_df['eGFR'] < threshold]
-                elif 'egfr above' in query or 'egfr over' in query or 'egfr >' in query:
-                    egfr_match = re.search(r'(?:above|over|>)\s*(\d+)', query)
-                    if egfr_match:
-                        threshold = int(egfr_match.group(1))
-                        filtered_df = filtered_df[filtered_df['eGFR'] > threshold]
-        
-        # Creatinine patterns with "between X and Y" support
-        elif 'creatinine' in query and 'Creatinine' in filtered_df.columns:
-            # Handle both "creatinine 2-3" and "creatinine between 2 and 3"
-            creat_pattern = r'creatinine\s+(?:between\s+)?(\d+(?:\.\d+)?)(?:[-–]\s*|(?:\s+and\s+))(\d+(?:\.\d+)?)'
-            match = re.search(creat_pattern, query)
-            if match:
-                min_val, max_val = float(match.group(1)), float(match.group(2))
-                filtered_df = filtered_df[(filtered_df['Creatinine'] >= min_val) & (filtered_df['Creatinine'] <= max_val)]
-            else:
-                # Single value patterns
-                if 'creatinine above' in query or 'creatinine over' in query or 'creatinine >' in query:
-                    creat_match = re.search(r'(?:above|over|>)\s*(\d+(?:\.\d+)?)', query)
-                    if creat_match:
-                        threshold = float(creat_match.group(1))
-                        filtered_df = filtered_df[filtered_df['Creatinine'] > threshold]
-                elif 'creatinine below' in query or 'creatinine under' in query or 'creatinine <' in query:
-                    creat_match = re.search(r'(?:below|under|<)\s*(\d+(?:\.\d+)?)', query)
-                    if creat_match:
-                        threshold = float(creat_match.group(1))
-                        filtered_df = filtered_df[filtered_df['Creatinine'] < threshold]
-        
-        # Age patterns
-        elif 'over' in query and 'age' in query or 'above' in query and 'age' in query:
-            age_match = re.search(r'(?:over|above)\s*(?:age\s*)?(\d+)', query)
-            if age_match and 'Age' in filtered_df.columns:
-                threshold = int(age_match.group(1))
-                filtered_df = filtered_df[filtered_df['Age'] > threshold]
-        
-        elif 'under' in query and 'age' in query or 'below' in query and 'age' in query:
-            age_match = re.search(r'(?:under|below)\s*(?:age\s*)?(\d+)', query)
-            if age_match and 'Age' in filtered_df.columns:
-                threshold = int(age_match.group(1))
-                filtered_df = filtered_df[filtered_df['Age'] < threshold]
-        
-        # Demographic patterns
-        elif 'african american' in query:
-            if 'Ethnicity' in filtered_df.columns:
-                filtered_df = filtered_df[filtered_df['Ethnicity'] == 'African American']
-        
-        elif 'hispanic' in query:
-            if 'Ethnicity' in filtered_df.columns:
-                filtered_df = filtered_df[filtered_df['Ethnicity'] == 'Hispanic']
-        
-        elif 'asian' in query:
-            if 'Ethnicity' in filtered_df.columns:
-                filtered_df = filtered_df[filtered_df['Ethnicity'] == 'Asian']
-        
-        elif 'caucasian' in query or 'white' in query:
-            if 'Ethnicity' in filtered_df.columns:
-                filtered_df = filtered_df[filtered_df['Ethnicity'] == 'Caucasian']
-        
-        elif 'female' in query or 'females' in query:
+        # Sex filtering - check for gender terms anywhere in query
+        if 'female' in query_lower:
             if 'Sex' in filtered_df.columns:
                 filtered_df = filtered_df[filtered_df['Sex'] == 'F']
-        
-        elif 'male' in query or 'males' in query:
+        elif 'male' in query_lower:
             if 'Sex' in filtered_df.columns:
                 filtered_df = filtered_df[filtered_df['Sex'] == 'M']
         
+        # Complex multi-criteria patterns first
+        if 'asian female patients with ckd and' in query_lower and 'g0/g1' in query_lower:
+            # Asian + Female + CKD + G0/G1 combination
+            if all(col in filtered_df.columns for col in ['Ethnicity', 'Sex', 'Diagnosis', 'APOL1_Variant']):
+                filtered_df = filtered_df[
+                    (filtered_df['Ethnicity'] == 'Asian') & 
+                    (filtered_df['Sex'] == 'F') &
+                    (filtered_df['Diagnosis'].str.contains('CKD', case=False, na=False)) &
+                    (filtered_df['APOL1_Variant'] == 'G0/G1')
+                ]
+        elif 'asian patients with ckd and' in query_lower and 'g0/g1' in query_lower:
+            # Asian + CKD + G0/G1 combination
+            if all(col in filtered_df.columns for col in ['Ethnicity', 'Diagnosis', 'APOL1_Variant']):
+                filtered_df = filtered_df[
+                    (filtered_df['Ethnicity'] == 'Asian') & 
+                    (filtered_df['Diagnosis'].str.contains('CKD', case=False, na=False)) &
+                    (filtered_df['APOL1_Variant'] == 'G0/G1')
+                ]
+        
+        # Ethnicity filtering
+        elif 'caucasian' in query_lower or 'white' in query_lower:
+            if 'Ethnicity' in filtered_df.columns:
+                filtered_df = filtered_df[filtered_df['Ethnicity'] == 'Caucasian']
+        elif 'african american' in query_lower or 'black' in query_lower:
+            if 'Ethnicity' in filtered_df.columns:
+                filtered_df = filtered_df[filtered_df['Ethnicity'] == 'African American']
+        elif 'hispanic' in query_lower or 'latino' in query_lower:
+            if 'Ethnicity' in filtered_df.columns:
+                filtered_df = filtered_df[filtered_df['Ethnicity'] == 'Hispanic']
+        elif 'asian' in query_lower:
+            if 'Ethnicity' in filtered_df.columns:
+                filtered_df = filtered_df[filtered_df['Ethnicity'] == 'Asian']
+        
         # Trial eligibility
-        elif 'trial eligible' in query or 'eligible for trials' in query:
+        if any(phrase in query_lower for phrase in [
+            'trial eligible', 
+            'eligible for trial', 
+            'eligible for trials', 
+            'eligible for clinical trials',
+            'eligible for nephropathy trials',
+            'eligible for precision medicine trials',
+            'research participants',
+            'study candidates'
+        ]):
             if 'Eligible_For_Trial' in filtered_df.columns:
                 filtered_df = filtered_df[filtered_df['Eligible_For_Trial'] == 'Yes']
         
-        elif 'not eligible' in query or 'ineligible' in query:
-            if 'Eligible_For_Trial' in filtered_df.columns:
-                filtered_df = filtered_df[filtered_df['Eligible_For_Trial'] == 'No']
+        # Individual genetic mutations
+        if 'nphs1 mutations' in query_lower or 'nphs1 mutant' in query_lower:
+            if 'NPHS1' in filtered_df.columns:
+                filtered_df = filtered_df[filtered_df['NPHS1'] == 'Mut']
+        elif 'nphs2 mutations' in query_lower or 'nphs2 mutant' in query_lower:
+            if 'NPHS2' in filtered_df.columns:
+                filtered_df = filtered_df[filtered_df['NPHS2'] == 'Mut']
+        elif 'wt1 mutations' in query_lower or 'wt1 mutant' in query_lower:
+            if 'WT1' in filtered_df.columns:
+                filtered_df = filtered_df[filtered_df['WT1'] == 'Mut']
+        elif 'col4a3 mutations' in query_lower or 'col4a3 mutant' in query_lower:
+            if 'COL4A3' in filtered_df.columns:
+                filtered_df = filtered_df[filtered_df['COL4A3'] == 'Mut']
+        elif 'umod mutations' in query_lower or 'umod mutant' in query_lower:
+            if 'UMOD' in filtered_df.columns:
+                filtered_df = filtered_df[filtered_df['UMOD'] == 'Mut']
         
-        # No mutation patterns
-        elif 'no mutations' in query or 'no gene mutations' in query:
-            gene_cols = ['NPHS1', 'NPHS2', 'WT1', 'COL4A3', 'UMOD']
-            if all(col in filtered_df.columns for col in gene_cols):
-                filtered_df = filtered_df[(filtered_df[gene_cols] == 'WT').all(axis=1)]
+        # Combined genetic mutations
+        elif 'nphs2 and wt1 mutations' in query_lower:
+            if 'NPHS2' in filtered_df.columns and 'WT1' in filtered_df.columns:
+                filtered_df = filtered_df[(filtered_df['NPHS2'] == 'Mut') & (filtered_df['WT1'] == 'Mut')]
+        elif 'col4a3 and umod mutations' in query_lower:
+            if 'COL4A3' in filtered_df.columns and 'UMOD' in filtered_df.columns:
+                filtered_df = filtered_df[(filtered_df['COL4A3'] == 'Mut') & (filtered_df['UMOD'] == 'Mut')]
+        elif 'nphs1 and col4a3' in query_lower or 'nphs1 and col4a3 double mutants' in query_lower:
+            if 'NPHS1' in filtered_df.columns and 'COL4A3' in filtered_df.columns:
+                filtered_df = filtered_df[(filtered_df['NPHS1'] == 'Mut') & (filtered_df['COL4A3'] == 'Mut')]
         
-        # At least one mutation
-        elif 'at least one' in query and 'mutation' in query:
-            gene_cols = ['NPHS1', 'NPHS2', 'WT1', 'COL4A3', 'UMOD']
-            if all(col in filtered_df.columns for col in gene_cols):
-                filtered_df = filtered_df[(filtered_df[gene_cols] == 'Mut').any(axis=1)]
+        # Special genetic patterns
+        elif 'wt1 mutations only' in query_lower:
+            # WT1 mutant but all others wild type
+            if all(col in filtered_df.columns for col in ['WT1', 'NPHS1', 'NPHS2', 'COL4A3', 'UMOD']):
+                filtered_df = filtered_df[(filtered_df['WT1'] == 'Mut') & 
+                                        (filtered_df['NPHS1'] == 'WT') & 
+                                        (filtered_df['NPHS2'] == 'WT') & 
+                                        (filtered_df['COL4A3'] == 'WT') & 
+                                        (filtered_df['UMOD'] == 'WT')]
+        elif 'no gene mutations' in query_lower or 'no mutations' in query_lower:
+            # All genes wild type
+            if all(col in filtered_df.columns for col in ['WT1', 'NPHS1', 'NPHS2', 'COL4A3', 'UMOD']):
+                filtered_df = filtered_df[(filtered_df['WT1'] == 'WT') & 
+                                        (filtered_df['NPHS1'] == 'WT') & 
+                                        (filtered_df['NPHS2'] == 'WT') & 
+                                        (filtered_df['COL4A3'] == 'WT') & 
+                                        (filtered_df['UMOD'] == 'WT')]
+        elif 'at least one gene mutation' in query_lower or 'at least one mutation' in query_lower:
+            # Any gene mutant
+            if all(col in filtered_df.columns for col in ['WT1', 'NPHS1', 'NPHS2', 'COL4A3', 'UMOD']):
+                filtered_df = filtered_df[(filtered_df['WT1'] == 'Mut') | 
+                                        (filtered_df['NPHS1'] == 'Mut') | 
+                                        (filtered_df['NPHS2'] == 'Mut') | 
+                                        (filtered_df['COL4A3'] == 'Mut') | 
+                                        (filtered_df['UMOD'] == 'Mut')]
         
-        # Complex patterns using "and"
-        elif ' and ' in query:
-            return self._handle_complex_query(query, filtered_df)
+        # Age filtering
+        elif 'under 30' in query_lower or 'below 30' in query_lower:
+            if 'Age' in filtered_df.columns:
+                filtered_df = filtered_df[filtered_df['Age'] < 30]
+        elif 'over 60' in query_lower or 'above 60' in query_lower:
+            if 'Age' in filtered_df.columns:
+                filtered_df = filtered_df[filtered_df['Age'] > 60]
+        elif 'young adults' in query_lower:
+            if 'Age' in filtered_df.columns:
+                filtered_df = filtered_df[(filtered_df['Age'] >= 18) & (filtered_df['Age'] <= 35)]
         
-        else:
-            # No specific pattern matched, return None to use semantic search
-            return None
-        
-        if len(filtered_df) < len(self.df):
-            return filtered_df.index.tolist()
-        else:
-            return None
-
-    def _handle_complex_query(self, query: str, df: pd.DataFrame) -> Optional[List[int]]:
-        """Handle complex queries with multiple conditions"""
-        query_lower = query.lower()
-        filtered_df = df.copy()
-        
-        # APOL1 and clinical conditions
-        if 'apol1' in query_lower and 'kidney dysfunction' in query_lower:
+        # APOL1 variants
+        elif 'patients with g1/g1' in query_lower or 'with g1/g1' in query_lower:
             if 'APOL1_Variant' in filtered_df.columns:
-                # APOL1 mutations (any variant except G0/G0)
+                filtered_df = filtered_df[filtered_df['APOL1_Variant'] == 'G1/G1']
+        elif 'patients with g2/g2' in query_lower or 'with g2/g2' in query_lower:
+            if 'APOL1_Variant' in filtered_df.columns:
+                filtered_df = filtered_df[filtered_df['APOL1_Variant'] == 'G2/G2']
+        elif 'patients with g0/g1' in query_lower or 'with g0/g1' in query_lower:
+            if 'APOL1_Variant' in filtered_df.columns:
+                filtered_df = filtered_df[filtered_df['APOL1_Variant'] == 'G0/G1']
+        elif 'patients with g1/g2' in query_lower or 'with g1/g2' in query_lower or 'compound heterozygosity in apol1' in query_lower:
+            if 'APOL1_Variant' in filtered_df.columns:
+                filtered_df = filtered_df[filtered_df['APOL1_Variant'] == 'G1/G2']
+        elif 'g0/g0 genotype only' in query_lower or 'carrying g0/g0' in query_lower:
+            if 'APOL1_Variant' in filtered_df.columns:
+                filtered_df = filtered_df[filtered_df['APOL1_Variant'] == 'G0/G0']
+        
+        # Gene counting logic
+        elif 'mutations in at least two genes' in query_lower or 'at least two gene mutations' in query_lower:
+            if all(col in filtered_df.columns for col in ['WT1', 'NPHS1', 'NPHS2', 'COL4A3', 'UMOD']):
+                gene_cols = ['WT1', 'NPHS1', 'NPHS2', 'COL4A3', 'UMOD']
+                filtered_df['mutation_count'] = (filtered_df[gene_cols] == 'Mut').sum(axis=1)
+                filtered_df = filtered_df[filtered_df['mutation_count'] >= 2]
+        elif 'four or more mutated genes' in query_lower:
+            if all(col in filtered_df.columns for col in ['WT1', 'NPHS1', 'NPHS2', 'COL4A3', 'UMOD']):
+                gene_cols = ['WT1', 'NPHS1', 'NPHS2', 'COL4A3', 'UMOD']
+                filtered_df['mutation_count'] = (filtered_df[gene_cols] == 'Mut').sum(axis=1)
+                filtered_df = filtered_df[filtered_df['mutation_count'] >= 4]
+        elif 'triple gene mutations' in query_lower or 'three gene mutations' in query_lower:
+            if all(col in filtered_df.columns for col in ['WT1', 'NPHS1', 'NPHS2', 'COL4A3', 'UMOD']):
+                gene_cols = ['WT1', 'NPHS1', 'NPHS2', 'COL4A3', 'UMOD']
+                filtered_df['mutation_count'] = (filtered_df[gene_cols] == 'Mut').sum(axis=1)
+                filtered_df = filtered_df[filtered_df['mutation_count'] == 3]
+        elif 'any two gene mutations' in query_lower or 'two gene mutations' in query_lower:
+            if all(col in filtered_df.columns for col in ['WT1', 'NPHS1', 'NPHS2', 'COL4A3', 'UMOD']):
+                gene_cols = ['WT1', 'NPHS1', 'NPHS2', 'COL4A3', 'UMOD']
+                filtered_df['mutation_count'] = (filtered_df[gene_cols] == 'Mut').sum(axis=1)
+                filtered_df = filtered_df[filtered_df['mutation_count'] == 2]
+        
+        # Complex genetic + clinical combinations
+        elif 'col4a3 mutation and proteinuria' in query_lower:
+            if all(col in filtered_df.columns for col in ['COL4A3', 'Diagnosis']):
+                filtered_df = filtered_df[(filtered_df['COL4A3'] == 'Mut') & 
+                                        (filtered_df['Diagnosis'] == 'Nephrotic Syndrome')]
+        elif 'wt1 mutation but no ckd' in query_lower:
+            if all(col in filtered_df.columns for col in ['WT1', 'Diagnosis']):
+                filtered_df = filtered_df[(filtered_df['WT1'] == 'Mut') & 
+                                        (~filtered_df['Diagnosis'].str.contains('CKD', case=False, na=False))]
+        
+        # CKD Stage patterns
+        elif 'ckd stage 5' in query_lower:
+            if 'Diagnosis' in filtered_df.columns:
+                filtered_df = filtered_df[filtered_df['Diagnosis'] == 'CKD Stage 5']
+        elif 'ckd stage 4' in query_lower:
+            if 'Diagnosis' in filtered_df.columns:
+                filtered_df = filtered_df[filtered_df['Diagnosis'] == 'CKD Stage 4']
+        elif 'ckd stage 3' in query_lower:
+            if 'Diagnosis' in filtered_df.columns:
+                filtered_df = filtered_df[filtered_df['Diagnosis'] == 'CKD Stage 3']
+        
+        # APOL1 mutation patterns
+        elif 'apol1 mutations' in query_lower or 'patients with apol1' in query_lower:
+            if 'APOL1_Variant' in filtered_df.columns:
+                # APOL1 mutations = any variant except G0/G0 (wild-type)
                 apol1_filtered = filtered_df[filtered_df['APOL1_Variant'] != 'G0/G0']
                 
-                # Kidney dysfunction criteria
-                kidney_dysfunction = (
-                    (filtered_df['eGFR'] < 45) |
-                    (filtered_df['Creatinine'] > 2.0) |
-                    (filtered_df['Diagnosis'].str.contains('CKD Stage [3-5]', na=False))
-                )
-                
-                filtered_df = apol1_filtered[kidney_dysfunction]
+                # Check for kidney dysfunction combination
+                if any(term in query_lower for term in ['kidney dysfunction', 'kidney disease', 'renal dysfunction']):
+                    # Kidney dysfunction = Advanced CKD stages or significantly low eGFR or high creatinine
+                    kidney_dysfunction = (
+                        (filtered_df['Diagnosis'].str.contains('CKD Stage [34]', na=False, regex=True)) |
+                        (filtered_df['eGFR'] < 45) |
+                        (filtered_df['Creatinine'] > 2.0)
+                    )
+                    filtered_df = apol1_filtered[kidney_dysfunction]
+                else:
+                    filtered_df = apol1_filtered
         
-        # Gene combinations
-        elif 'nphs2 and wt1' in query_lower:
-            if 'NPHS2' in filtered_df.columns and 'WT1' in filtered_df.columns:
-                filtered_df = filtered_df[
-                    (filtered_df['NPHS2'] == 'Mut') & 
-                    (filtered_df['WT1'] == 'Mut')
-                ]
+        # Kidney dysfunction patterns
+        elif any(term in query_lower for term in ['kidney dysfunction', 'kidney disease', 'renal dysfunction', 'kidney failure']):
+            # Kidney dysfunction = Advanced CKD stages, significantly low eGFR, or high creatinine
+            kidney_dysfunction = (
+                (filtered_df['Diagnosis'].str.contains('CKD Stage [34]', na=False, regex=True)) |
+                (filtered_df['eGFR'] < 45) |
+                (filtered_df['Creatinine'] > 2.0)
+            )
+            filtered_df = filtered_df[kidney_dysfunction]
         
-        elif 'col4a3 and umod' in query_lower:
-            if 'COL4A3' in filtered_df.columns and 'UMOD' in filtered_df.columns:
-                filtered_df = filtered_df[
-                    (filtered_df['COL4A3'] == 'Mut') & 
-                    (filtered_df['UMOD'] == 'Mut')
-                ]
+        # Wild-type APOL1 pattern
+        elif 'wild-type apol1' in query_lower or 'wildtype apol1' in query_lower:
+            if 'APOL1_Variant' in filtered_df.columns:
+                filtered_df = filtered_df[filtered_df['APOL1_Variant'] == 'G0/G0']
         
-        # Demographics and genetics
-        elif 'african american' in query_lower and 'g1/g1' in query_lower:
-            if 'Ethnicity' in filtered_df.columns and 'APOL1_Variant' in filtered_df.columns:
-                filtered_df = filtered_df[
-                    (filtered_df['Ethnicity'] == 'African American') & 
-                    (filtered_df['APOL1_Variant'] == 'G1/G1')
-                ]
+        # Clinical condition patterns
+        elif 'diabetic nephropathy' in query_lower:
+            if 'Diagnosis' in filtered_df.columns:
+                filtered_df = filtered_df[filtered_df['Diagnosis'] == 'Diabetic Nephropathy']
+        elif 'nephrotic syndrome' in query_lower:
+            if 'Diagnosis' in filtered_df.columns:
+                filtered_df = filtered_df[filtered_df['Diagnosis'] == 'Nephrotic Syndrome']
+        elif 'glomerulonephritis' in query_lower:
+            if 'Diagnosis' in filtered_df.columns:
+                filtered_df = filtered_df[filtered_df['Diagnosis'].str.contains('glomerulonephritis', case=False, na=False)]
+
+        # Dynamic numerical range patterns
+        elif any(range_indicator in query_lower for range_indicator in ['aged', 'egfr', 'creatinine']):
+            import re
+            
+            # Age ranges
+            if 'aged' in query_lower and 'Age' in filtered_df.columns:
+                age_pattern = r'aged\s+(\d+)[-–](\d+)'
+                match = re.search(age_pattern, query_lower)
+                if match:
+                    min_val, max_val = int(match.group(1)), int(match.group(2))
+                    age_filtered = filtered_df[(filtered_df['Age'] >= min_val) & (filtered_df['Age'] <= max_val)]
+                    
+                    if 'gene mutations' in query_lower:
+                        gene_cols = ['WT1', 'NPHS1', 'NPHS2', 'COL4A3', 'UMOD']
+                        has_mutation = (age_filtered[gene_cols] == 'Mut').any(axis=1)
+                        filtered_df = age_filtered[has_mutation]
+                    else:
+                        filtered_df = age_filtered
+            
+            # eGFR ranges  
+            elif 'egfr' in query_lower and 'eGFR' in filtered_df.columns:
+                # Handle both "eGFR 60-90" and "eGFR between 60 and 90"
+                egfr_pattern = r'egfr\s+(?:between\s+)?(\d+)(?:[-–]\s*|(?:\s+and\s+))(\d+)'
+                match = re.search(egfr_pattern, query_lower)
+                if match:
+                    min_val, max_val = int(match.group(1)), int(match.group(2))
+                    egfr_filtered = filtered_df[(filtered_df['eGFR'] >= min_val) & (filtered_df['eGFR'] <= max_val)]
+                    
+                    # Check for additional conditions
+                    if 'ckd stage' in query_lower:
+                        stage_match = re.search(r'ckd stage (\d+)', query_lower)
+                        if stage_match:
+                            stage = stage_match.group(1)
+                            filtered_df = egfr_filtered[egfr_filtered['Diagnosis'] == f'CKD Stage {stage}']
+                        else:
+                            filtered_df = egfr_filtered
+                    else:
+                        filtered_df = egfr_filtered
+            
+            # Creatinine ranges
+            elif 'creatinine' in query_lower and 'Creatinine' in filtered_df.columns:
+                # Handle both "creatinine 2-3" and "creatinine between 2 and 3"
+                creat_pattern = r'creatinine\s+(?:between\s+)?(\d+(?:\.\d+)?)(?:[-–]\s*|(?:\s+and\s+))(\d+(?:\.\d+)?)'
+                match = re.search(creat_pattern, query_lower)
+                if match:
+                    min_val, max_val = float(match.group(1)), float(match.group(2))
+                    filtered_df = filtered_df[(filtered_df['Creatinine'] >= min_val) & (filtered_df['Creatinine'] <= max_val)]
         
-        elif 'hispanic' in query_lower and 'ckd' in query_lower:
-            if 'Ethnicity' in filtered_df.columns and 'Diagnosis' in filtered_df.columns:
-                filtered_df = filtered_df[
-                    (filtered_df['Ethnicity'] == 'Hispanic') & 
-                    (filtered_df['Diagnosis'].str.contains('CKD', na=False))
-                ]
+        # Specific APOL1 variants (legacy patterns)
+        elif 'g2/g2' in query_lower:
+            if 'APOL1_Variant' in filtered_df.columns:
+                filtered_df = filtered_df[filtered_df['APOL1_Variant'] == 'G2/G2']
+        elif 'g1 variant' in query_lower:
+            if 'APOL1_Variant' in filtered_df.columns:
+                filtered_df = filtered_df[filtered_df['APOL1_Variant'].str.contains('G1')]
+        elif 'g2 variant' in query_lower:
+            if 'APOL1_Variant' in filtered_df.columns:
+                filtered_df = filtered_df[filtered_df['APOL1_Variant'].str.contains('G2')]
         
-        else:
-            return None
-        
-        return filtered_df.index.tolist()
+        # Return indices only if filtering actually occurred
+        return filtered_df.index.tolist() if len(filtered_df) < original_size else None
 
     def get_similar_patients(self, patient_idx: int, top_k: int = 5) -> Tuple[List[int], List[float]]:
         """Find similar patients to a given patient"""
         if self.tfidf_matrix is None:
-            raise ValueError("Index not built. Call build_index first.")
+            raise ValueError("Index not built. Call build_index() first.")
         
         if patient_idx >= len(self.texts):
             raise ValueError(f"Patient index {patient_idx} out of range")
         
+        # Get the patient's vector
         patient_vector = self.tfidf_matrix[patient_idx]
-        similarities = cosine_similarity(patient_vector, self.tfidf_matrix)[0]
         
-        # Exclude the patient itself
-        similarities[patient_idx] = -1
+        # Calculate similarities with all other patients
+        similarities = cosine_similarity(patient_vector, self.tfidf_matrix).flatten()
         
-        # Get top similar patients
-        top_indices = np.argsort(similarities)[::-1][:top_k]
-        top_scores = similarities[top_indices]
+        # Get top similar patients (excluding the patient itself)
+        sim_indices = np.argsort(similarities)[::-1]
+        similar_indices = [idx for idx in sim_indices if idx != patient_idx][:top_k]
+        similar_scores = [similarities[idx] for idx in similar_indices]
         
-        return top_indices.tolist(), top_scores.tolist()
+        return similar_indices, similar_scores
 
     def suggest_queries(self) -> List[str]:
         """Suggest example queries for users"""
         return [
-            "Find patients with APOL1 G1/G1 mutations",
-            "Show me patients with diabetic nephropathy",
-            "Patients with eGFR below 45",
-            "African American patients with kidney disease",
-            "Patients eligible for clinical trials",
-            "Find patients with multiple gene mutations",
-            "Show patients with high creatinine levels",
-            "Young patients with genetic variants",
-            "Patients with CKD Stage 3 or 4",
-            "Hispanic females with APOL1 variants"
+            "Find patients above age 50 with kidney disease",
+            "Show me African American patients with APOL1 mutations",
+            "Patients with eGFR below 30",
+            "Female patients eligible for clinical trials", 
+            "Patients with high-risk genetic variants",
+            "Male patients with CKD Stage 4",
+            "Patients under age 40 with normal kidney function",
+            "Hispanic patients with NPHS2 mutations"
         ]
 
     def get_query_insights(self, query: str, results_indices: List[int], df: pd.DataFrame) -> Dict:
         """Generate insights about search results"""
         if not results_indices:
-            return {"total_results": 0, "message": "No patients found matching the criteria"}
+            return {"total_results": 0}
         
         results_df = df.iloc[results_indices]
         
         insights = {
             "total_results": len(results_indices),
-            "demographics": {
-                "age_range": f"{results_df['Age'].min():.0f}-{results_df['Age'].max():.0f} years",
-                "sex_distribution": results_df['Sex'].value_counts().to_dict(),
-                "ethnicity_distribution": results_df['Ethnicity'].value_counts().to_dict()
-            },
-            "clinical": {
-                "egfr_range": f"{results_df['eGFR'].min():.1f}-{results_df['eGFR'].max():.1f}",
-                "creatinine_range": f"{results_df['Creatinine'].min():.1f}-{results_df['Creatinine'].max():.1f}",
-                "diagnoses": results_df['Diagnosis'].value_counts().to_dict(),
-                "trial_eligible": results_df['Eligible_For_Trial'].value_counts().to_dict()
-            }
+            "demographics": {},
+            "clinical": {},
+            "genetic": {}
         }
+        
+        # Demographics insights
+        if 'Age' in results_df.columns:
+            insights["demographics"]["age_range"] = {
+                "min": int(results_df['Age'].min()),
+                "max": int(results_df['Age'].max()),
+                "mean": round(results_df['Age'].mean(), 1)
+            }
+        
+        if 'Sex' in results_df.columns:
+            sex_counts = results_df['Sex'].value_counts()
+            insights["demographics"]["sex_distribution"] = sex_counts.to_dict()
+        
+        if 'Ethnicity' in results_df.columns:
+            ethnicity_counts = results_df['Ethnicity'].value_counts()
+            insights["demographics"]["ethnicity_distribution"] = ethnicity_counts.to_dict()
+        
+        # Clinical insights
+        if 'Diagnosis' in results_df.columns:
+            diagnosis_counts = results_df['Diagnosis'].value_counts()
+            insights["clinical"]["diagnoses"] = diagnosis_counts.to_dict()
+        
+        if 'eGFR' in results_df.columns:
+            insights["clinical"]["egfr_stats"] = {
+                "mean": round(results_df['eGFR'].mean(), 1),
+                "min": round(results_df['eGFR'].min(), 1),
+                "max": round(results_df['eGFR'].max(), 1)
+            }
+        
+        if 'Eligible_For_Trial' in results_df.columns:
+            trial_counts = results_df['Eligible_For_Trial'].value_counts()
+            insights["clinical"]["trial_eligibility"] = trial_counts.to_dict()
+        
+        # Genetic insights
+        if 'APOL1_Variant' in results_df.columns:
+            apol1_counts = results_df['APOL1_Variant'].value_counts()
+            insights["genetic"]["apol1_variants"] = apol1_counts.to_dict()
         
         return insights
