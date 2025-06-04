@@ -1,1 +1,3 @@
+https://clin-genome-navigator-demo.replit.app/
+![image](https://github.com/user-attachments/assets/6f224bcb-f7d9-4845-918a-ad6ff7ba21b9)
 ClinGenome Navigator analyzes a synthetic clinico genomic data for kidney disease research with focus on chronic kidney disease (CKD) and genetic variants. This platform combines patient demographics, genetic markers (APOL1, NPHS1, NPHS2), and clinical notes to generate insights and identify research opportunities for sponsors. Use natural language queries to explore patterns, analyze cohorts, and extract insights from 1,500 patient records for pharmaceutical research and clinical trial planning.
